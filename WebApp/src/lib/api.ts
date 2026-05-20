@@ -1,9 +1,4 @@
-// URL du backend Koyeb
-// Priorité : variable d'env Vite > fallback hardcodé
-const BASE_URL = (
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "")
-  ?? "https://yumeflower.koyeb.app"
-);
+const BASE_URL = (import.meta.env.VITE_API_URL as string) || "https://yumeflowerbot.koyeb.app";
 
 async function call<T = any>(
   path: string,
@@ -29,59 +24,15 @@ async function call<T = any>(
 
 // ─── Sessions ─────────────────────────────────────────────────────────────────
 
-/**
- * Verifie la session active.
- * - Si idPubs est fourni (bot clone) → /api/check-session-clone
- * - Sinon (bot mere) → /api/check-session
- * Retourne un objet normalise : { active, expires_at, type, time_left }
- */
-export async function checkSession(userId: number, cloneId?: string, idPubs?: string) {
-  if (idPubs) {
-    const res = await call<any>("/api/check-session-clone", "POST", {
-      user_id: userId,
-      id_pubs: idPubs,
-    });
-    // Normaliser la reponse clone vers le format attendu par IndexPage
-    return {
-      active:     res?.has_access ?? false,
-      expires_at: res?.expires_at ?? null,
-      type:       res?.type ?? "free",
-      time_left:  res?.time_left ?? 0,
-      success:    res?.success ?? false,
-    };
-  }
-  // Bot mere
-  const res = await call<any>("/api/check-session", "POST", {
-    user_id:  userId,
-    clone_id: cloneId,
-  });
-  return {
-    active:     res?.has_access ?? false,
-    expires_at: res?.expires_at ?? null,
-    type:       res?.type ?? "free",
-    time_left:  res?.time_left ?? 0,
-  };
+export async function checkSession(userId: number, cloneId?: string) {
+  return call("/api/check-session", "POST", { user_id: userId, clone_id: cloneId });
 }
 
-/**
- * Enregistre une pub vue et cree la session.
- * - Si idPubs est fourni (bot clone) → /api/watch-ad-clone
- * - Sinon (bot mere) → /api/watch-ad
- */
 export async function watchAd(userId: number, cloneId?: string, idPubs?: string) {
-  if (idPubs) {
-    return call("/api/watch-ad-clone", "POST", {
-      user_id: userId,
-      id_pubs: idPubs,
-    });
-  }
-  return call("/api/watch-ad", "POST", {
-    user_id:  userId,
-    clone_id: cloneId,
-  });
+  return call("/api/watch-ad", "POST", { user_id: userId, clone_id: cloneId, id_pubs: idPubs });
 }
 
-// ─── Clone / Maitre ───────────────────────────────────────────────────────────
+// ─── Clone / Maître ───────────────────────────────────────────────────────────
 
 export async function verifyPubs(idPubs: string) {
   return call("/api/verify-pubs", "POST", { id_pubs: idPubs });
@@ -113,7 +64,7 @@ export async function requestWithdrawal(
   accountInfo: string
 ) {
   return call("/api/request-withdrawal", "POST", {
-    id_code:      idCode,
+    id_code: idCode,
     amount,
     method,
     account_info: accountInfo,
@@ -122,29 +73,6 @@ export async function requestWithdrawal(
 
 export async function regenerateIds(idCode: string) {
   return call("/api/regenerate-ids", "POST", { id_code: idCode });
-}
-
-// ─── Taches & Gains utilisateur ──────────────────────────────────────────────
-
-export async function getUserProfile(userId: number) {
-  return call<any>(`/api/user/profile?user_id=${userId}`, "GET");
-}
-
-export async function getTasks(userId: number) {
-  return call<any>(`/api/tasks?user_id=${userId}`, "GET");
-}
-
-export async function claimTask(userId: number, taskId: string) {
-  return call("/api/tasks/claim", "POST", { user_id: userId, task_id: taskId });
-}
-
-export async function requestUserWithdrawal(
-  userId: number,
-  amount: number,
-  method: "mobile_money" | "usdt_trc20",
-  address: string
-) {
-  return call("/api/user/withdraw", "POST", { user_id: userId, amount, method, address });
 }
 
 // ─── Admin / Owner ────────────────────────────────────────────────────────────
@@ -161,10 +89,6 @@ export async function getAdminClones(_token: string) {
   return call<any>("/api/admin/clones", "GET");
 }
 
-export async function getAdminUsers() {
-  return call<any>("/api/admin/users", "GET");
-}
-
 export async function creditClone(_token: string, cloneId: string, amount: number) {
   return call("/api/admin/credit", "POST", { clone_id: cloneId, amount });
 }
@@ -176,33 +100,10 @@ export async function approveWithdrawal(withdrawalId: string) {
 export async function rejectWithdrawal(withdrawalId: string, reason?: string) {
   return call("/api/admin/reject-withdrawal", "POST", {
     withdrawal_id: withdrawalId,
-    reason:        reason || "Rejete par l'administrateur",
-  });
-}
-
-export async function approveUserWithdrawal(withdrawalId: string) {
-  return call("/api/admin/approve-user-withdrawal", "POST", { withdrawal_id: withdrawalId });
-}
-
-export async function rejectUserWithdrawal(withdrawalId: string, reason?: string) {
-  return call("/api/admin/reject-user-withdrawal", "POST", {
-    withdrawal_id: withdrawalId,
-    reason:        reason || "Rejete par l'administrateur",
+    reason: reason || "Rejeté par l'administrateur",
   });
 }
 
 export async function adminConfig(_token: string, freeDuration: number) {
   return call("/api/admin/config", "POST", { free_duration: freeDuration });
-}
-
-export async function addManualTask(title: string, description: string, reward: number, url: string) {
-  return call("/api/admin/tasks/add", "POST", { title, description, reward_kgc: reward, url });
-}
-
-export async function deleteTask(taskId: string) {
-  return call("/api/admin/tasks/delete", "POST", { task_id: taskId });
-}
-
-export async function getUserWithdrawals() {
-  return call<any>("/api/admin/user-withdrawals", "GET");
 }
