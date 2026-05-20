@@ -112,7 +112,7 @@ export async function regenerateIds(idCode: string) {
   return call("/api/regenerate-ids", "POST", { id_code: idCode });
 }
 
-// ─── Admin / Owner ────────────────────────────────────────────────────────────
+// ─── Admin Functions ─────────────────────────────────────────────────────────
 
 export async function adminLogin(password: string) {
   return call("/api/admin/login", "POST", { password });
@@ -126,6 +126,10 @@ export async function getAdminClones(_token: string) {
   return call<any>("/api/admin/clones", "GET");
 }
 
+export async function getAdminUsers() {
+  return call<any>("/api/admin/users", "GET");
+}
+
 export async function creditClone(_token: string, cloneId: string, amount: number) {
   return call("/api/admin/credit", "POST", { clone_id: cloneId, amount });
 }
@@ -136,6 +140,30 @@ export async function approveWithdrawal(withdrawalId: string) {
 
 export async function rejectWithdrawal(withdrawalId: string, reason?: string) {
   return call("/api/admin/reject-withdrawal", "POST", {
+    withdrawal_id: withdrawalId,
+    reason: reason || "Rejeté par l'administrateur",
+  });
+}
+
+// Nouvelles fonctions pour AdminPage
+export async function addManualTask(title: string, description: string, reward: number, url?: string) {
+  return call("/api/admin/tasks", "POST", { title, description, reward, url });
+}
+
+export async function deleteTask(taskId: string) {
+  return call("/api/admin/tasks/delete", "POST", { task_id: taskId });
+}
+
+export async function getUserWithdrawals() {
+  return call<any>("/api/admin/user-withdrawals", "GET");
+}
+
+export async function approveUserWithdrawal(withdrawalId: string) {
+  return call("/api/admin/approve-user-withdrawal", "POST", { withdrawal_id: withdrawalId });
+}
+
+export async function rejectUserWithdrawal(withdrawalId: string, reason?: string) {
+  return call("/api/admin/reject-user-withdrawal", "POST", {
     withdrawal_id: withdrawalId,
     reason: reason || "Rejeté par l'administrateur",
   });
