@@ -11,13 +11,17 @@ async function call<T = any>(
       headers: { "Content-Type": "application/json" },
     };
     if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(`\( {BASE_URL} \){path}`, opts);
+
+    const url = `\( {BASE_URL} \){path}`;
+    const res = await fetch(url, opts);
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       return { success: false, error: err?.error || `HTTP ${res.status}` } as T;
     }
     return await res.json();
   } catch (e) {
+    console.error(`[API Error] ${path}:`, e);
     return { success: false, error: String(e) } as T;
   }
 }
@@ -32,7 +36,7 @@ export async function watchAd(userId: number, cloneId?: string, idPubs?: string)
   return call("/api/watch-ad", "POST", { 
     user_id: userId, 
     clone_id: cloneId, 
-    id_pubs: idPubs 
+    id_pubs: idPubs || "YUMEFLOWER" 
   });
 }
 
@@ -69,8 +73,7 @@ export async function requestUserWithdrawal(
   });
 }
 
-// ─── Clone / Maître ───────────────────────────────────────────────────────────
-
+// ... (le reste de tes fonctions reste identique)
 export async function verifyPubs(idPubs: string) {
   return call("/api/verify-pubs", "POST", { id_pubs: idPubs });
 }
@@ -145,7 +148,6 @@ export async function rejectWithdrawal(withdrawalId: string, reason?: string) {
   });
 }
 
-// Nouvelles fonctions pour AdminPage
 export async function addManualTask(title: string, description: string, reward: number, url?: string) {
   return call("/api/admin/tasks", "POST", { title, description, reward, url });
 }
