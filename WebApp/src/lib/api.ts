@@ -11,7 +11,7 @@ async function call<T = any>(
       headers: { "Content-Type": "application/json" },
     };
     if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(`${BASE_URL}${path}`, opts);
+    const res = await fetch(`\( {BASE_URL} \){path}`, opts);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       return { success: false, error: err?.error || `HTTP ${res.status}` } as T;
@@ -22,14 +22,35 @@ async function call<T = any>(
   }
 }
 
-// ─── Sessions ─────────────────────────────────────────────────────────────────
+// ─── Sessions & Ads ───────────────────────────────────────────────────────────
 
 export async function checkSession(userId: number, cloneId?: string) {
   return call("/api/check-session", "POST", { user_id: userId, clone_id: cloneId });
 }
 
 export async function watchAd(userId: number, cloneId?: string, idPubs?: string) {
-  return call("/api/watch-ad", "POST", { user_id: userId, clone_id: cloneId, id_pubs: idPubs });
+  return call("/api/watch-ad", "POST", { 
+    user_id: userId, 
+    clone_id: cloneId, 
+    id_pubs: idPubs 
+  });
+}
+
+// ─── Tasks & Profile ─────────────────────────────────────────────────────────
+
+export async function getTasks(userId: number) {
+  return call("/api/tasks", "POST", { user_id: userId });
+}
+
+export async function claimTask(userId: number, taskId: string) {
+  return call("/api/claim-task", "POST", { 
+    user_id: userId, 
+    task_id: taskId 
+  });
+}
+
+export async function getUserProfile(userId: number) {
+  return call("/api/profile", "POST", { user_id: userId });
 }
 
 // ─── Clone / Maître ───────────────────────────────────────────────────────────
