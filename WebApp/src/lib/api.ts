@@ -53,6 +53,22 @@ export async function getUserProfile(userId: number) {
   return call("/api/profile", "POST", { user_id: userId });
 }
 
+// ─── User Withdrawal ─────────────────────────────────────────────────────────
+
+export async function requestUserWithdrawal(
+  userId: number,
+  amount: number,
+  method: string,
+  accountInfo: string
+) {
+  return call("/api/user/withdrawal", "POST", {
+    user_id: userId,
+    amount,
+    method,
+    account_info: accountInfo,
+  });
+}
+
 // ─── Clone / Maître ───────────────────────────────────────────────────────────
 
 export async function verifyPubs(idPubs: string) {
