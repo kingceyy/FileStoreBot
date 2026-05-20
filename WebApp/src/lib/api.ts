@@ -13,21 +13,23 @@ async function call<T = any>(
     if (body) opts.body = JSON.stringify(body);
 
     const url = `\( {BASE_URL} \){path}`;
+    console.log(`[API Call] ${method} ${url}`, body); // Debug
+
     const res = await fetch(url, opts);
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      console.error(`[API Error] ${path}:`, err);
       return { success: false, error: err?.error || `HTTP ${res.status}` } as T;
     }
     return await res.json();
   } catch (e) {
-    console.error(`[API Error] ${path}:`, e);
+    console.error(`[API Catch] ${path}:`, e);
     return { success: false, error: String(e) } as T;
   }
 }
 
 // ─── Sessions & Ads ───────────────────────────────────────────────────────────
-
 export async function checkSession(userId: number, cloneId?: string) {
   return call("/api/check-session", "POST", { user_id: userId, clone_id: cloneId });
 }
@@ -41,7 +43,6 @@ export async function watchAd(userId: number, cloneId?: string, idPubs?: string)
 }
 
 // ─── Tasks & Profile ─────────────────────────────────────────────────────────
-
 export async function getTasks(userId: number) {
   return call("/api/tasks", "POST", { user_id: userId });
 }
@@ -58,7 +59,6 @@ export async function getUserProfile(userId: number) {
 }
 
 // ─── User Withdrawal ─────────────────────────────────────────────────────────
-
 export async function requestUserWithdrawal(
   userId: number,
   amount: number,
@@ -73,7 +73,7 @@ export async function requestUserWithdrawal(
   });
 }
 
-// ... (le reste de tes fonctions reste identique)
+// ─── Clone / Maître ───────────────────────────────────────────────────────────
 export async function verifyPubs(idPubs: string) {
   return call("/api/verify-pubs", "POST", { id_pubs: idPubs });
 }
@@ -116,7 +116,6 @@ export async function regenerateIds(idCode: string) {
 }
 
 // ─── Admin Functions ─────────────────────────────────────────────────────────
-
 export async function adminLogin(password: string) {
   return call("/api/admin/login", "POST", { password });
 }
