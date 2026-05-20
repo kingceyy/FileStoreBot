@@ -1,0 +1,143 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-bg-deep: #0A0A0A;
+  --color-bg-card: #111111;
+  --color-bg-elevated: #1A1A1A;
+  --color-border-subtle: rgba(255,255,255,0.08);
+  --color-accent-blue: #0088CC;
+  --color-accent-gold: #FFB200;
+  --color-text-primary: #FFFFF0;
+  --color-text-muted: rgba(255,255,240,0.55);
+  --color-success: #22C55E;
+  --color-error: #EF4444;
+  --color-warning: #F59E0B;
+
+  --color-background: #0A0A0A;
+  --color-foreground: #FFFFF0;
+  --color-card: #111111;
+  --color-card-foreground: #FFFFF0;
+  --color-primary: #0088CC;
+  --color-primary-foreground: #FFFFF0;
+  --color-secondary: #1A1A1A;
+  --color-secondary-foreground: #FFFFF0;
+  --color-muted: #1A1A1A;
+  --color-muted-foreground: rgba(255,255,240,0.55);
+  --color-accent: #FFB200;
+  --color-accent-foreground: #0A0A0A;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFF0;
+  --color-border: rgba(255,255,255,0.08);
+  --color-input: rgba(255,255,255,0.08);
+  --color-ring: #0088CC;
+  --color-popover: #111111;
+  --color-popover-foreground: #FFFFF0;
+
+  --font-display: "Inter", "DM Sans", sans-serif;
+  --font-body: "Inter", "DM Sans", sans-serif;
+
+  --radius: 1rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  --animate-glow-pulse: glow-pulse 2s ease-in-out infinite;
+  --animate-spin-slow: spin 2s linear infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+.animate-shake { animation: shake 0.4s ease-in-out; }
+
+html, body {
+  background: #0A0A0A;
+  color: #FFFFF0;
+  font-family: "Inter", "DM Sans", system-ui, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+  opacity: 0.03;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 10% 5%, rgba(0,136,204,0.15), transparent 40%),
+    radial-gradient(circle at 90% 95%, rgba(255,178,0,0.08), transparent 40%);
+}
+
+#root, main { position: relative; z-index: 1; }
+
+.font-display { font-family: "Inter", "DM Sans", sans-serif; font-weight: 800; letter-spacing: -0.01em; }
+.font-body { font-family: "Inter", "DM Sans", sans-serif; }
+
+.glass {
+  background: rgba(17,17,17,0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1rem;
+}
+
+.glass-blue {
+  background: rgba(0,136,204,0.10);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0,136,204,0.20);
+  border-radius: 1rem;
+}
+
+* { border-color: rgba(255,255,255,0.08); }
+
+button { transition: all 0.25s ease; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BLOQUER LE CLIQUE LONG SUR TOUTES LES IMAGES
+   Empêche le menu contextuel natif du WebView Telegram (lien, enregistrer, etc.)
+   ───────────────────────────────────────────────────────────────────────────── */
+img {
+  /* iOS Safari — bloque "Ouvrir le lien / Enregistrer l'image" sur long press */
+  -webkit-touch-callout: none;
+  /* Empêche la sélection du contenu */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  /* Empêche le drag natif */
+  -webkit-user-drag: none;
+  /* Bloque tous les événements pointer sur l'image elle-même.
+     Le clic remonte quand même au parent (bouton, lien, etc.) */
+  pointer-events: none;
+}
+
+/* Masquer la scrollbar horizontale des tabs */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

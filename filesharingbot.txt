@@ -1,0 +1,12 @@
+[25-Dec-25 23:49:07 - INFO] - bot - Bot Running..!
+
+Created by 
+https://t.me/BotZFlixSupport
+[25-Dec-25 23:49:07 - INFO] - bot - BOT DEPLOYED BY @BotZFlix
+[25-Dec-25 23:49:07 - INFO] - bot - Bot Running..! Made by @ZeeXDev
+[25-Dec-25 23:49:08 - INFO] - bot - Bot is now running. Thanks to @Kingcey
+[26-Dec-25 00:20:48 - INFO] - bot - Shutting down...
+[26-Dec-25 00:20:49 - INFO] - bot - Bot stopped.
+[19-Feb-26 18:17:40 - INFO] - root - [DB] SQLite database initialized successfully
+[19-Feb-26 18:17:40 - INFO] - plugins.gestion - Module gestion.py chargé avec succès - Système de gestion des bots clonés actif
+[19-Feb-26 18:17:40 - INFO] - __main__ - Module gestion.py chargé avec succès - Système de gestion des bots clonés actif
