@@ -16,12 +16,12 @@ from config import (
     START_MSG, START_PIC, FORCE_MSG, FORCE_PIC,
     MOTHER_BOT_USERNAME, MOTHER_BOT_LINK
 )
-from helper_func import decode, get_exp_time, is_subscribed, is_sub, check_admin, get_messages
+from helper_func import decode, get_exp_time, is_subscribed, is_sub, check_admin, get_messages, admin
 from database.database import db
 
 WEBAPP_URL = ADSGRAM_WEBAPP_URL or "https://waramugi.vercel.app"
 
-admin = filters.create(check_admin)
+# admin est importé depuis helper_func.py — NE PAS redéfinir ici
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS — ID du bot courant et ID_PUBS
@@ -119,7 +119,7 @@ async def check_user_access(client: Client, user_id: int, message: Message) -> t
 
     if orig_link:
         text += (
-            f"\n\n<blockquote>Une fois l'accès obtenu, "
+            f"\n\n<<blockquote>Une fois l'accès obtenu, "
             f"<a href='{orig_link}'>cliquez ici</a> pour récupérer votre fichier.</blockquote>"
         )
 
@@ -393,6 +393,15 @@ async def start_callback(client: Client, callback_query: CallbackQuery):
     await callback_query.answer()
 
 
+@Bot.on_callback_query(filters.regex("^close$"))
+async def close_callback(client: Client, callback_query: CallbackQuery):
+    try:
+        await callback_query.message.delete()
+    except Exception:
+        pass
+    await callback_query.answer()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # CALLBACK — Ma session
 # ─────────────────────────────────────────────────────────────────────────────
@@ -444,15 +453,6 @@ async def check_session_callback(client: Client, callback_query: CallbackQuery):
         ])
 
     await callback_query.message.edit_text(text, reply_markup=keyboard)
-    await callback_query.answer()
-
-
-@Bot.on_callback_query(filters.regex("^close$"))
-async def close_callback(client: Client, callback_query: CallbackQuery):
-    try:
-        await callback_query.message.delete()
-    except Exception:
-        pass
     await callback_query.answer()
 
 

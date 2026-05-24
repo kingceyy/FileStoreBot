@@ -28,7 +28,7 @@ class Bot(Client):
             name=session_name,
             api_hash=API_HASH,
             api_id=APP_ID,
-            plugins={"root": "plugins"},
+            # ❌ SUPPRIMÉ : plugins auto-chargés car main.py les contrôle manuellement
             workers=TG_BOT_WORKERS,
             bot_token=TG_BOT_TOKEN
         )

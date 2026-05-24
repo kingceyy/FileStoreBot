@@ -17,44 +17,10 @@ from database.database import *
 async def cb_handler(client: Bot, query: CallbackQuery):
     data = query.data
 
-    if data == "help":
-        await query.message.edit_text(
-            text=HELP_TXT.format(first=query.from_user.first_name),
-            disable_web_page_preview=True,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton('Retour', callback_data='start'),
-                 InlineKeyboardButton("Fermer", callback_data='close')]
-            ])
-        )
+    # Les callbacks help, about, start, close sont gérés dans start.py
+    # On garde seulement les callbacks spécifiques au Force Sub ici
 
-    elif data == "about":
-        await query.message.edit_text(
-            text=ABOUT_TXT.format(first=query.from_user.first_name),
-            disable_web_page_preview=True,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton('Retour', callback_data='start'),
-                 InlineKeyboardButton('Fermer', callback_data='close')]
-            ])
-        )
-
-    elif data == "start":
-        await query.message.edit_text(
-            text=START_MSG.format(first=query.from_user.first_name),
-            disable_web_page_preview=True,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Aide", callback_data='help'),
-                 InlineKeyboardButton("À Propos", callback_data='about')]
-            ])
-        )
-
-    elif data == "close":
-        await query.message.delete()
-        try:
-            await query.message.reply_to_message.delete()
-        except:
-            pass
-
-    elif data.startswith("rfs_ch_"):
+    if data.startswith("rfs_ch_"):
         cid = int(data.split("_")[2])
         try:
             chat = await client.get_chat(cid)
