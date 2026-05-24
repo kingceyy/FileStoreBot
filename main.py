@@ -46,12 +46,17 @@ async def main():
     # ============================================================
     print("📦 Chargement des plugins...")
     try:
-        import plugins.clone      # /clone
-        import plugins.gestion    # /gestion
-        import plugins.list_bots  # /list, /bots
-        import plugins.stats      # /stats
-        import plugins.start      # /start (déjà chargé mais sécurité)
-        import plugins.admin      # Commandes admin
+        # Force l'import de tous les modules pour enregistrer les handlers
+        import plugins.clone           # /clone
+        import plugins.gestion         # /gestion
+        import plugins.list_bots       # /list, /bots
+        import plugins.stats           # /stats
+        import plugins.start           # /start
+        import plugins.admin           # Commandes admin
+        import plugins.link_generator  # /batch, /genlink, /custom_batch
+        import plugins.channel_post    # Post dans le canal DB
+        import plugins.useless         # /stats, /users, /dlt_time, etc.
+        import plugins.cbb             # Callbacks (help, about, close, etc.)
         print("✅ Tous les plugins chargés avec succès!")
     except Exception as e:
         print(f"❌ Erreur chargement plugins: {e}")
@@ -81,7 +86,6 @@ async def main():
         from plugins.clone import init_cloned_bots
         
         # Timeout de 60 secondes max pour ne pas bloquer le bot mère
-        # Les clones avec token expiré seront ignorés silencieusement
         await asyncio.wait_for(init_cloned_bots(), timeout=60.0)
         print("✅ Bots clonés initialisés!")
     except asyncio.TimeoutError:
