@@ -13,12 +13,12 @@ from config import *
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from database.database import *
 
+# NOTE : Les callbacks help, about, start, close sont gérés dans start.py
+# Ce fichier gère uniquement les callbacks Force Sub (rfs_)
+
 @Bot.on_callback_query(group=2)
 async def cb_handler(client: Bot, query: CallbackQuery):
     data = query.data
-
-    # Les callbacks help, about, start, close sont gérés dans start.py
-    # On garde seulement les callbacks spécifiques au Force Sub ici
 
     if data.startswith("rfs_ch_"):
         cid = int(data.split("_")[2])

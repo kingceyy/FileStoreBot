@@ -15,7 +15,7 @@ import pyrogram.utils
 # Configuration Pyrogram (évite les erreurs d'ID de canal)
 pyrogram.utils.MIN_CHANNEL_ID = -1009147483647
 
-# Import web_server APRÈS la config de base
+# Import web_server AVANT le bot (nécessaire pour le serveur)
 from plugins.web_server import web_server
 
 async def main():
@@ -35,42 +35,14 @@ async def main():
     # Démarrage du bot Telegram
     print("🤖 Démarrage du bot Telegram...")
     
-    # Import ICI, juste avant de créer l'instance
+    # Les plugins sont chargés AUTOMATIQUEMENT par Pyrogram via plugins={"root": "plugins"} dans bot.py
+    # NE PAS importer manuellement les plugins ici pour éviter le double chargement
     from bot import Bot
     
-    # CRÉER L'INSTANCE BOT
+    # CRÉER L'INSTANCE BOT (charge les plugins automatiquement)
     bot = Bot()
     
-    # ============================================================
-    # IMPORT DES PLUGINS - ORDRE CRITIQUE
-    # start.py doit être chargé en PREMIER car il définit admin = filters.create(check_admin)
-    # Les autres plugins utilisent admin depuis helper_func.py
-    # ============================================================
-    print("📦 Chargement des plugins...")
-    try:
-        # 1. Plugins core (ordre important)
-        import plugins.start           # /start - DÉFINIT admin = filters.create(check_admin)
-        import plugins.cbb             # Callbacks (help, about, close, etc.)
-        
-        # 2. Plugins qui utilisent admin depuis helper_func
-        import plugins.link_generator  # /batch, /genlink, /custom_batch
-        import plugins.channel_post    # Post dans le canal DB
-        import plugins.admin           # Commandes admin (/add_admin, /deladmin, etc.)
-        import plugins.useless         # /stats, /users, /dlt_time, /check_dlt_time
-        
-        # 3. Plugins système
-        import plugins.clone           # /clone
-        import plugins.gestion         # /gestion
-        import plugins.list_bots       # /list, /bots
-        import plugins.stats           # /stats
-        print("✅ Tous les plugins chargés avec succès!")
-    except Exception as e:
-        print(f"❌ Erreur chargement plugins: {e}")
-        import traceback
-        traceback.print_exc()
-    # ============================================================
-    
-    # DÉMARRER LE BOT (charge les plugins et démarre les handlers)
+    # DÉMARRER LE BOT (démarre les handlers et la connexion Telegram)
     await bot.start()
     
     print("✅ Bot démarré avec succès!")
