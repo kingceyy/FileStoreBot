@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Lock, CheckCircle2, Loader2, Circle, Crown, Star, ChevronRight } from "lucide-react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
@@ -24,7 +24,6 @@ declare global {
       };
     };
   }
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
     interface IntrinsicElements {
       "adsgram-task": React.DetailedHTMLProps<<React.HTMLAttributes<<HTMLElement>, HTMLElement> & {
@@ -37,7 +36,6 @@ declare global {
 }
 
 // ─── Monetag Rewarded Interstitial — Zone 11019878 ─────────────────────────────
-// Usage officiel Monetag : show_11019878() sans argument
 async function showMonetagAd(): Promise<void> {
   return new Promise((resolve, reject) => {
     const attempt = () => {
@@ -50,7 +48,6 @@ async function showMonetagAd(): Promise<void> {
     if (typeof window.show_11019878 === "function") {
       attempt();
     } else {
-      // Attendre jusqu'a 3s que le SDK charge
       const deadline = Date.now() + 3000;
       const poll = () => {
         if (typeof window.show_11019878 === "function") {
@@ -59,7 +56,7 @@ async function showMonetagAd(): Promise<void> {
           setTimeout(poll, 200);
         } else {
           console.warn("[Monetag] SDK non disponible apres 3s, on continue");
-          resolve(); // ne pas bloquer l'utilisateur
+          resolve();
         }
       };
       poll();
@@ -68,14 +65,12 @@ async function showMonetagAd(): Promise<void> {
 }
 
 // ─── AdsGram Rewarded Video — blockId 30344 ──────────────────────────────────
-// Utilise window.Adsgram.init() (API officielle AdsGram)
-// Le callback onReward est appele uniquement quand la pub est regardee en entier
 async function showAdsgramRewardedVideo(): Promise<void> {
   return new Promise((resolve, reject) => {
     const attempt = () => {
       if (!window.Adsgram) {
         console.warn("[AdsGram] SDK non disponible");
-        resolve(); // ne pas bloquer
+        resolve();
         return;
       }
       try {
@@ -86,7 +81,6 @@ async function showAdsgramRewardedVideo(): Promise<void> {
             if (result.error) {
               reject(new Error(result.description || "AdsGram erreur"));
             } else {
-              // result.done === true = pub regardee en entier → reward
               resolve();
             }
           })
@@ -99,7 +93,6 @@ async function showAdsgramRewardedVideo(): Promise<void> {
     if (window.Adsgram) {
       attempt();
     } else {
-      // Attendre le SDK jusqu'a 3s
       const deadline = Date.now() + 3000;
       const poll = () => {
         if (window.Adsgram) {
@@ -117,18 +110,17 @@ async function showAdsgramRewardedVideo(): Promise<void> {
 }
 
 export function IndexPage() {
-  const [loading, setLoading]   = useState(true);
-  const [session, setSession]   = useState<{ expiresAt: number; type: "free" | "premium" } | null>(null);
-  const [step1, setStep1]       = useState<<StepState>("idle");
-  const [step2, setStep2]       = useState<<StepState>("idle");
-  const [success, setSuccess]   = useState(false);
-  const [running, setRunning]   = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<{ expiresAt: number; type: "free" | "premium" } | null>(null);
+  const [step1, setStep1] = useState<<StepState>("idle");
+  const [step2, setStep2] = useState<<StepState>("idle");
+  const [success, setSuccess] = useState(false);
+  const [running, setRunning] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const user   = getTelegramUser();
+  const user = getTelegramUser();
   const userId = user?.id ?? 0;
 
-  // Lire les deux params d'URL : idPubs (pour les clones) et cloneId
   const { cloneId, idPubs } = getQueryParams();
 
   useEffect(() => {
@@ -151,7 +143,6 @@ export function IndexPage() {
     setRunning(true);
     setErrorMsg(null);
 
-    // — Etape 1 : Monetag Rewarded Popup —
     setStep1("running");
     try {
       await showMonetagAd();
@@ -165,7 +156,6 @@ export function IndexPage() {
       return;
     }
 
-    // — Etape 2 : AdsGram Rewarded Video —
     setStep2("running");
     try {
       await showAdsgramRewardedVideo();
@@ -179,19 +169,15 @@ export function IndexPage() {
       return;
     }
 
-    // — Envoyer au backend : creer la session —
-    // watchAd choisit automatiquement /watch-ad-clone si idPubs est fourni
     const res = await watchAd(userId, cloneId, idPubs);
 
     if (res?.success === false && res?.message !== "Session already active" && res?.message !== "Session deja active pour ce bot") {
-      // Erreur reelle (pas "deja active")
       setErrorMsg(res?.error || "Erreur lors de l'activation de la session.");
       hapticError();
       setRunning(false);
       return;
     }
 
-    // Recuperer la session fraichement creee pour afficher le countdown
     const freshSession = await checkSession(userId, cloneId, idPubs);
     if (freshSession?.active && freshSession?.expires_at) {
       setSession({ expiresAt: Number(freshSession.expires_at) * 1000, type: freshSession.type ?? "free" });
@@ -210,7 +196,6 @@ export function IndexPage() {
     </PageWrapper>
   );
 
-  // Session active : afficher le countdown directement
   if (session) return (
     <PageWrapper subtitle="Acces Securise" title="Session active">
       <SessionStatus expiresAt={session.expiresAt} type={session.type} />
@@ -286,9 +271,9 @@ export function IndexPage() {
 
         <motion.div variants={fadeUp} className="w-full mb-6">
           <Card>
-            <StepRow index={1} label="Publicite Monetag"  sublabel="Pop-up recompensee"       state={step1} />
+            <StepRow index={1} label="Publicite Monetag" sublabel="Pop-up recompensee" state={step1} />
             <div className="ml-4 my-1 h-5 w-px bg-white/10" />
-            <StepRow index={2} label="Publicite AdsGram"  sublabel="Video recompensee (rewarded)" state={step2} />
+            <StepRow index={2} label="Publicite AdsGram" sublabel="Video recompensee (rewarded)" state={step2} />
           </Card>
         </motion.div>
 
@@ -340,10 +325,10 @@ export function IndexPage() {
 function StepRow({ index, label, sublabel, state }: {
   index: number; label: string; sublabel: string; state: StepState;
 }) {
-  const bg = state === "done"    ? "#22C55E"
-           : state === "running" ? "#0088CC"
-           : state === "error"   ? "#EF4444"
-           : "rgba(255,255,255,0.05)";
+  const bg = state === "done" ? "#22C55E"
+    : state === "running" ? "#0088CC"
+    : state === "error" ? "#EF4444"
+    : "rgba(255,255,255,0.05)";
 
   const stateLabel = { idle: "En attente", running: "En cours...", done: "Terminee", error: "Erreur" }[state];
   const stateColor = { idle: "rgba(255,255,240,0.35)", running: "#0088CC", done: "#22C55E", error: "#EF4444" }[state];
@@ -352,14 +337,14 @@ function StepRow({ index, label, sublabel, state }: {
     <div className="flex items-center gap-3 py-1.5">
       <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-300"
         style={{
-          background:  bg,
-          border:      state === "idle" ? "1px solid rgba(255,255,255,0.12)" : "none",
-          boxShadow:   state === "running" ? "0 0 12px rgba(0,136,204,0.5)"
-                     : state === "done"    ? "0 0 12px rgba(34,197,94,0.4)" : "none",
+          background: bg,
+          border: state === "idle" ? "1px solid rgba(255,255,255,0.12)" : "none",
+          boxShadow: state === "running" ? "0 0 12px rgba(0,136,204,0.5)"
+            : state === "done" ? "0 0 12px rgba(34,197,94,0.4)" : "none",
         }}>
-        {state === "done"    ? <CheckCircle2 size={17} color="#fff" />
+        {state === "done" ? <CheckCircle2 size={17} color="#fff" />
         : state === "running" ? <Loader2 size={16} className="animate-spin" color="#fff" />
-        : state === "error"  ? <span style={{ color: "#fff", fontSize: 15, fontWeight: 800 }}>!</span>
+        : state === "error" ? <span style={{ color: "#fff", fontSize: 15, fontWeight: 800 }}>!</span>
         : <Circle size={14} color="#FFFFF0" opacity={0.25} />}
       </div>
       <div className="flex-1 text-left">
