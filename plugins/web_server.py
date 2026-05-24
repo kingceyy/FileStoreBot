@@ -328,7 +328,7 @@ async def api_watch_ad_clone(request):
             logger.info(f"Session déjà active pour user {user_id} sur bot {bot_id}")
             return web.json_response({
                 'success': False,
-                'message': 'Session déjà active pour ce bot'
+                'message': 'Session already active'
             })
         
         # Creer session gratuite pour CE bot specifique
@@ -656,30 +656,49 @@ async def api_master_regenerate_code(request):
         }, status=500)
 
 # ============================================================
-# API EXISTANTES (BOT MÈRE)
+# API EXISTANTES (BOT MÈRE) — CORRIGÉES POUR SUPPORTER LES CLONES
 # ============================================================
 
 @routes.post("/api/check-session")
 async def api_check_session(request):
-    """Vérifie si l'utilisateur a une session active (bot mère)"""
+    """Vérifie si l'utilisateur a une session active (bot mère ou clone)"""
     try:
         data = await request.json()
         user_id = data.get('user_id')
         auth = data.get('auth')
+        id_pubs = data.get('id_pubs', '').strip().upper()
+        clone_id = data.get('clone_id')
         
-        logger.info(f"Check session (bot mère) - User: {user_id}")
+        logger.info(f"Check session - User: {user_id}, id_pubs: {id_pubs}, clone_id: {clone_id}")
         
         if not user_id:
             return web.json_response({'error': 'Missing user_id'}, status=400)
         
-        # Vérifier session pour bot mère (bot_id=0)
+        # Déterminer le bot_id cible
+        bot_id = MOTHER_BOT_ID
+        if id_pubs:
+            resolved_bot_id, bot_info, error = await resolve_bot_id_from_id_pubs(id_pubs)
+            if error:
+                logger.warning(f"ID_PUBS invalide dans check-session: {id_pubs}")
+            elif resolved_bot_id is not None:
+                bot_id = resolved_bot_id
+        elif clone_id is not None:
+            try:
+                bot_id = int(clone_id)
+            except (ValueError, TypeError):
+                pass
+        
+        # Vérifier session pour ce bot_id
         try:
-            has_session = await db.has_active_session(user_id, 0)  # bot_id=0 pour bot mère
-            time_left = await db.get_session_time_left(user_id, 0) if has_session else 0
-            session = await db.get_user_session(user_id, 0) if has_session else None
+            has_session = await db.has_active_session(user_id, bot_id)
+            time_left = await db.get_session_time_left(user_id, bot_id) if has_session else 0
+            session = await db.get_user_session(user_id, bot_id) if has_session else None
+            
+            active = has_session and time_left > 0
             
             return web.json_response({
-                'has_access': has_session and time_left > 0,
+                'active': active,
+                'has_access': active,
                 'time_left': time_left,
                 'expires_at': session.get('expires_at') if session else None,
                 'type': session.get('type') if session else None,
@@ -689,6 +708,7 @@ async def api_check_session(request):
         except Exception as db_error:
             logger.error(f"Erreur DB check-session: {db_error}")
             return web.json_response({
+                'active': False,
                 'has_access': False,
                 'error': 'Database error',
                 'detail': str(db_error)

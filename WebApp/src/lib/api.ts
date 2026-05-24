@@ -6,14 +6,23 @@ async function call<T = any>(
   body?: object
 ): Promise<T> {
   try {
+    let url = `${BASE_URL}${path}`;
     const opts: RequestInit = {
       method,
       headers: { "Content-Type": "application/json" },
     };
-    if (body) opts.body = JSON.stringify(body);
 
-    const url = `\( {BASE_URL} \){path}`;
-    console.log(`[API Call] ${method} ${url}`, body); // Debug
+    if (method === "GET" && body) {
+      const params = new URLSearchParams();
+      Object.entries(body).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) params.append(k, String(v));
+      });
+      if (params.toString()) url += `?${params.toString()}`;
+    } else if (body) {
+      opts.body = JSON.stringify(body);
+    }
+
+    console.log(`[API Call] ${method} ${url}`, body);
 
     const res = await fetch(url, opts);
 
@@ -30,32 +39,36 @@ async function call<T = any>(
 }
 
 // ─── Sessions & Ads ───────────────────────────────────────────────────────────
-export async function checkSession(userId: number, cloneId?: string) {
-  return call("/api/check-session", "POST", { user_id: userId, clone_id: cloneId });
+export async function checkSession(userId: number, cloneId?: string, idPubs?: string) {
+  return call("/api/check-session", "POST", {
+    user_id: userId,
+    clone_id: cloneId,
+    id_pubs: idPubs,
+  });
 }
 
 export async function watchAd(userId: number, cloneId?: string, idPubs?: string) {
-  return call("/api/watch-ad", "POST", { 
-    user_id: userId, 
-    clone_id: cloneId, 
-    id_pubs: idPubs || "YUMEFLOWER" 
+  return call("/api/watch-ad", "POST", {
+    user_id: userId,
+    clone_id: cloneId,
+    id_pubs: idPubs || "YUMEFLOWER",
   });
 }
 
 // ─── Tasks & Profile ─────────────────────────────────────────────────────────
 export async function getTasks(userId: number) {
-  return call("/api/tasks", "POST", { user_id: userId });
+  return call("/api/tasks", "GET", { user_id: userId });
 }
 
 export async function claimTask(userId: number, taskId: string) {
-  return call("/api/claim-task", "POST", { 
-    user_id: userId, 
-    task_id: taskId 
+  return call("/api/tasks/claim", "POST", {
+    user_id: userId,
+    task_id: taskId,
   });
 }
 
 export async function getUserProfile(userId: number) {
-  return call("/api/profile", "POST", { user_id: userId });
+  return call("/api/user/profile", "GET", { user_id: userId });
 }
 
 // ─── User Withdrawal ─────────────────────────────────────────────────────────
@@ -65,11 +78,11 @@ export async function requestUserWithdrawal(
   method: string,
   accountInfo: string
 ) {
-  return call("/api/user/withdrawal", "POST", {
+  return call("/api/user/withdraw", "POST", {
     user_id: userId,
     amount,
     method,
-    account_info: accountInfo,
+    address: accountInfo,
   });
 }
 
@@ -103,7 +116,7 @@ export async function requestWithdrawal(
   method: string,
   accountInfo: string
 ) {
-  return call("/api/request-withdrawal", "POST", {
+  return call("/api/master/withdraw", "POST", {
     id_code: idCode,
     amount,
     method,
@@ -148,7 +161,12 @@ export async function rejectWithdrawal(withdrawalId: string, reason?: string) {
 }
 
 export async function addManualTask(title: string, description: string, reward: number, url?: string) {
-  return call("/api/admin/tasks", "POST", { title, description, reward, url });
+  return call("/api/admin/tasks/add", "POST", {
+    title,
+    description,
+    reward_kgc: reward,
+    url,
+  });
 }
 
 export async function deleteTask(taskId: string) {
