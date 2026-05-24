@@ -24,15 +24,6 @@ declare global {
       };
     };
   }
-  namespace JSX {
-    interface IntrinsicElements {
-      "adsgram-task": React.DetailedHTMLProps<<React.HTMLAttributes<<HTMLElement>, HTMLElement> & {
-        "data-block-id"?: string;
-        "data-debug"?: string;
-        "data-debug-console"?: string;
-      };
-    }
-  }
 }
 
 // ─── Monetag Rewarded Interstitial — Zone 11019878 ─────────────────────────────
@@ -112,8 +103,8 @@ async function showAdsgramRewardedVideo(): Promise<void> {
 export function IndexPage() {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<{ expiresAt: number; type: "free" | "premium" } | null>(null);
-  const [step1, setStep1] = useState<<StepState>("idle");
-  const [step2, setStep2] = useState<<StepState>("idle");
+  const [step1, setStep1] = useState<StepState>("idle");
+  const [step2, setStep2] = useState<StepState>("idle");
   const [success, setSuccess] = useState(false);
   const [running, setRunning] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
