@@ -16,7 +16,7 @@ from config import (
     START_MSG, START_PIC, FORCE_MSG, FORCE_PIC,
     MOTHER_BOT_USERNAME, MOTHER_BOT_LINK
 )
-from helper_func import decode, get_exp_time, is_subscribed, is_sub, check_admin
+from helper_func import decode, get_exp_time, is_subscribed, is_sub, check_admin, get_messages
 from database.database import db
 
 WEBAPP_URL = ADSGRAM_WEBAPP_URL or "https://waramugi.vercel.app"

@@ -678,9 +678,7 @@ async def api_check_session(request):
         bot_id = MOTHER_BOT_ID
         if id_pubs:
             resolved_bot_id, bot_info, error = await resolve_bot_id_from_id_pubs(id_pubs)
-            if error:
-                logger.warning(f"ID_PUBS invalide dans check-session: {id_pubs}")
-            elif resolved_bot_id is not None:
+            if not error and resolved_bot_id is not None:
                 bot_id = resolved_bot_id
         elif clone_id is not None:
             try:
@@ -696,11 +694,20 @@ async def api_check_session(request):
             
             active = has_session and time_left > 0
             
+            # Convertir datetime en string pour JSON
+            expires_at = None
+            if session and session.get('expires_at'):
+                exp = session['expires_at']
+                if hasattr(exp, 'isoformat'):
+                    expires_at = exp.isoformat()
+                else:
+                    expires_at = str(exp)
+            
             return web.json_response({
                 'active': active,
                 'has_access': active,
                 'time_left': time_left,
-                'expires_at': session.get('expires_at') if session else None,
+                'expires_at': expires_at,
                 'type': session.get('type') if session else None,
                 'duration': await db.get_free_session_duration(),
                 'can_watch_ad': await db.can_watch_ad(user_id)
@@ -721,6 +728,7 @@ async def api_check_session(request):
             'error': str(e),
             'traceback': traceback.format_exc()
         }, status=500)
+
 
 
 @routes.post("/api/watch-ad")
