@@ -42,21 +42,27 @@ async def main():
     bot = Bot()
     
     # ============================================================
-    # IMPORT DES PLUGINS - CRITIQUE: APRÈS bot = Bot() mais AVANT start()
+    # IMPORT DES PLUGINS - ORDRE CRITIQUE
+    # start.py doit être chargé en PREMIER car il définit admin = filters.create(check_admin)
+    # Les autres plugins utilisent admin depuis helper_func.py
     # ============================================================
     print("📦 Chargement des plugins...")
     try:
-        # Force l'import de tous les modules pour enregistrer les handlers
+        # 1. Plugins core (ordre important)
+        import plugins.start           # /start - DÉFINIT admin = filters.create(check_admin)
+        import plugins.cbb             # Callbacks (help, about, close, etc.)
+        
+        # 2. Plugins qui utilisent admin depuis helper_func
+        import plugins.link_generator  # /batch, /genlink, /custom_batch
+        import plugins.channel_post    # Post dans le canal DB
+        import plugins.admin           # Commandes admin (/add_admin, /deladmin, etc.)
+        import plugins.useless         # /stats, /users, /dlt_time, /check_dlt_time
+        
+        # 3. Plugins système
         import plugins.clone           # /clone
         import plugins.gestion         # /gestion
         import plugins.list_bots       # /list, /bots
         import plugins.stats           # /stats
-        import plugins.start           # /start
-        import plugins.admin           # Commandes admin
-        import plugins.link_generator  # /batch, /genlink, /custom_batch
-        import plugins.channel_post    # Post dans le canal DB
-        import plugins.useless         # /stats, /users, /dlt_time, etc.
-        import plugins.cbb             # Callbacks (help, about, close, etc.)
         print("✅ Tous les plugins chargés avec succès!")
     except Exception as e:
         print(f"❌ Erreur chargement plugins: {e}")
