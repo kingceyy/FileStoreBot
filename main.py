@@ -46,7 +46,6 @@ async def main():
     # ============================================================
     print("📦 Chargement des plugins...")
     try:
-        # Force l'import de tous les modules pour enregistrer les handlers
         import plugins.clone      # /clone
         import plugins.gestion    # /gestion
         import plugins.list_bots  # /list, /bots
@@ -75,13 +74,18 @@ async def main():
         print(f"⚠️ Impossible de lancer cleanup_sessions : {e}")
 
     # ============================================================
-    # DÉMARRAGE DES BOTS CLONÉS
+    # DÉMARRAGE DES BOTS CLONÉS — AVEC TIMEOUT ET PROTECTION
     # ============================================================
     try:
         print("🔄 Initialisation des bots clonés...")
         from plugins.clone import init_cloned_bots
-        await init_cloned_bots()
+        
+        # Timeout de 60 secondes max pour ne pas bloquer le bot mère
+        # Les clones avec token expiré seront ignorés silencieusement
+        await asyncio.wait_for(init_cloned_bots(), timeout=60.0)
         print("✅ Bots clonés initialisés!")
+    except asyncio.TimeoutError:
+        print("⚠️ Timeout: démarrage des clones trop long — bot mère continue normalement")
     except Exception as e:
         print(f"⚠️ Erreur lors du démarrage des bots clonés: {e}")
         import traceback

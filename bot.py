@@ -19,16 +19,10 @@ name = """
 # =======================
 class Bot(Client):
     def __init__(self):
-        # SUPPRIMER l'ancien fichier session pour éviter l'erreur AUTH_KEY_DUPLICATED
+        # NE PAS supprimer la session à chaque démarrage
+        # Cela force une réauthentification complète et bloque le bot
+        # Si AUTH_KEY_DUPLICATED apparaît, supprime MANUELLEMENT via Koyeb console
         session_name = "Bot"
-        for ext in ['', '.session', '.session-journal', '.session-shm', '.session-wal']:
-            file = f"{session_name}{ext}"
-            if os.path.exists(file):
-                try:
-                    os.remove(file)
-                    print(f"[INIT] Fichier {file} supprimé")
-                except:
-                    pass
         
         super().__init__(
             name=session_name,
@@ -61,7 +55,7 @@ class Bot(Client):
         try:
             print(f"[INIT] Connexion au canal DB (CHANNEL_ID: {CHANNEL_ID})...")
             db_channel = await self.get_chat(CHANNEL_ID)
-            self.db_channel = db_channel  # Stocke l'objet Chat complet (avec .id, .username, etc.)
+            self.db_channel = db_channel
             
             # Test d'envoi pour vérifier les permissions
             test = await self.send_message(chat_id=db_channel.id, text="🔄 Test de connexion...")
