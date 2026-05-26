@@ -13,32 +13,36 @@ import { expandWebApp, getQueryParams, getTelegramUser, hapticSuccess, hapticErr
 
 type StepState = "idle" | "running" | "done" | "error";
 
-// ─── Types AdsGram Task Web Component ─────────────────────────────────────────
+// --- Types AdsGram ---
 declare global {
   interface Window {
-    show_11019878?: () => Promise<void>;
     Adsgram?: {
       init(params: { blockId: string; debug?: boolean }): {
         show(): Promise<{ done: boolean; error: boolean; description?: string }>;
         destroy(): void;
       };
     };
+    show_11019878?: () => Promise<void>;
   }
 }
 
-// ─── Monetag Rewarded Interstitial — Zone 11019878 ─────────────────────────────
-async function showMonetagAd(): Promise<void> {
-  return new Promise((resolve, reject) => {
+// --- Monetag silencieux (caché UI mais fonctionnel) ---
+async function showMonetagAdSilent(): Promise<void> {
+  return new Promise((resolve) => {
     const attempt = () => {
       if (typeof window.show_11019878 === "function") {
-        window.show_11019878().then(resolve).catch(() => reject(new Error("Monetag indisponible")));
-      } else {
-        reject(new Error("Monetag SDK non disponible"));
+        window.show_11019878()
+          .then(() => resolve())
+          .catch(() => resolve()); // Ignore erreur, on continue quand même
+        return;
       }
+      resolve(); // Pas de SDK, on continue
     };
+
     if (typeof window.show_11019878 === "function") {
       attempt();
     } else {
+      // Attendre max 3s le SDK puis continuer
       const deadline = Date.now() + 3000;
       const poll = () => {
         if (typeof window.show_11019878 === "function") {
@@ -46,8 +50,7 @@ async function showMonetagAd(): Promise<void> {
         } else if (Date.now() < deadline) {
           setTimeout(poll, 200);
         } else {
-          console.warn("[Monetag] SDK non disponible apres 3s, on continue");
-          resolve();
+          resolve(); // Timeout, on continue sans Monetag
         }
       };
       poll();
@@ -55,13 +58,12 @@ async function showMonetagAd(): Promise<void> {
   });
 }
 
-// ─── AdsGram Rewarded Video — blockId 30344 ──────────────────────────────────
+// --- AdsGram Rewarded Video ---
 async function showAdsgramRewardedVideo(): Promise<void> {
   return new Promise((resolve, reject) => {
     const attempt = () => {
       if (!window.Adsgram) {
-        console.warn("[AdsGram] SDK non disponible");
-        resolve();
+        reject(new Error("AdsGram SDK non disponible"));
         return;
       }
       try {
@@ -91,8 +93,7 @@ async function showAdsgramRewardedVideo(): Promise<void> {
         } else if (Date.now() < deadline) {
           setTimeout(poll, 200);
         } else {
-          console.warn("[AdsGram] SDK non disponible apres 3s, on continue");
-          resolve();
+          reject(new Error("AdsGram SDK non disponible"));
         }
       };
       poll();
@@ -104,7 +105,6 @@ export function IndexPage() {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<{ expiresAt: number; type: "free" | "premium" } | null>(null);
   const [step1, setStep1] = useState<StepState>("idle");
-  const [step2, setStep2] = useState<StepState>("idle");
   const [success, setSuccess] = useState(false);
   const [running, setRunning] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -134,35 +134,28 @@ export function IndexPage() {
     setRunning(true);
     setErrorMsg(null);
 
+    // Étape cachée : Monetag en arrière-plan (silencieux)
+    await showMonetagAdSilent();
+
+    // Étape visible : AdsGram
     setStep1("running");
     try {
-      await showMonetagAd();
+      await showAdsgramRewardedVideo();
       setStep1("done");
     } catch (err) {
-      console.error("[Monetag]", err);
+      console.error("[AdsGram]", err);
       setStep1("error");
       hapticError();
-      setErrorMsg("La publicite Monetag est indisponible. Reessayez dans quelques secondes.");
-      setRunning(false);
-      return;
-    }
-
-    setStep2("running");
-    try {
-      await showAdsgramRewardedVideo();
-      setStep2("done");
-    } catch (err) {
-      console.error("[AdsGram]", err);
-      setStep2("error");
-      hapticError();
-      setErrorMsg("La publicite AdsGram est indisponible. Reessayez dans quelques secondes.");
+      setErrorMsg("La publicite est indisponible. Reessayez dans quelques secondes.");
       setRunning(false);
       return;
     }
 
     const res = await watchAd(userId, cloneId, idPubs);
 
-    if (res?.success === false && res?.message !== "Session already active" && res?.message !== "Session deja active pour ce bot") {
+    if (res?.success === false && 
+        res?.message !== "Session already active" && 
+        res?.message !== "Session deja active pour ce bot") {
       setErrorMsg(res?.error || "Erreur lors de l'activation de la session.");
       hapticError();
       setRunning(false);
@@ -171,7 +164,10 @@ export function IndexPage() {
 
     const freshSession = await checkSession(userId, cloneId, idPubs);
     if (freshSession?.active && freshSession?.expires_at) {
-      setSession({ expiresAt: Number(freshSession.expires_at) * 1000, type: freshSession.type ?? "free" });
+      setSession({ 
+        expiresAt: Number(freshSession.expires_at) * 1000, 
+        type: freshSession.type ?? "free" 
+      });
     }
 
     hapticSuccess();
@@ -222,8 +218,8 @@ export function IndexPage() {
   );
 
   const btnLabel = !running
-    ? (errorMsg ? "Reessayer" : "Commencer — Regarder les publicites")
-    : step2 !== "idle" ? "Publicite 2/2 en cours..." : "Publicite 1/2 en cours...";
+    ? (errorMsg ? "Reessayer" : "Commencer — Regarder la publicite")
+    : "Publicite en cours...";
 
   return (
     <PageWrapper subtitle="Acces Securise">
@@ -242,7 +238,7 @@ export function IndexPage() {
           Debloquer l'acces
         </motion.h1>
         <motion.p variants={fadeUp} className="text-[#FFFFF0]/55 max-w-xs mb-3 text-sm leading-relaxed">
-          Regardez 2 publicites courtes pour obtenir un acces gratuit aux fichiers
+          Regardez une publicite courte pour obtenir un acces gratuit aux fichiers
         </motion.p>
         <motion.div variants={fadeUp} className="mb-6">
           <Badge color="#22C55E">100% Gratuit</Badge>
@@ -262,9 +258,8 @@ export function IndexPage() {
 
         <motion.div variants={fadeUp} className="w-full mb-6">
           <Card>
-            <StepRow index={1} label="Publicite Monetag" sublabel="Pop-up recompensee" state={step1} />
-            <div className="ml-4 my-1 h-5 w-px bg-white/10" />
-            <StepRow index={2} label="Publicite AdsGram" sublabel="Video recompensee (rewarded)" state={step2} />
+            {/* 1 seule étape visible : AdsGram */}
+            <StepRow index={1} label="Publicite AdsGram" sublabel="Video recompensee" state={step1} />
           </Card>
         </motion.div>
 
