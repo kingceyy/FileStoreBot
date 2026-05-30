@@ -67,7 +67,7 @@ async function showAdsgramRewardedVideo(): Promise<void> {
         return;
       }
       try {
-        const controller = window.Adsgram.init({ blockId: "30344", debug: false });
+        const controller = window.Adsgram.init({ blockId: "33567", debug: false });
         controller
           .show()
           .then((result) => {

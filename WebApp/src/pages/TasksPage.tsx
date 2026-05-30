@@ -1,6 +1,6 @@
 /**
  * TasksPage — Tâches & Gains KGC-Sphères
- * - AdsGram Native Task via web component <adsgram-task> (blockId task-30433)
+ * - AdsGram Native Task via web component <adsgram-task> (blockId task-33568)
  * - Monetag Rewarded Popup (zone 11019878)
  */
 import { motion } from "framer-motion";
@@ -420,7 +420,7 @@ function AdsgramTaskCard({ task, onReward }: { task: Task; onReward: () => void 
         {!claimed && (
           <adsgram-task
             ref={taskRef as React.RefObject<HTMLElement>}
-            data-block-id="task-30433"
+            data-block-id="task-33568"
             data-debug="false"
             data-debug-console="false"
             style={{
