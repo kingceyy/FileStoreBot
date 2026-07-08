@@ -20,6 +20,7 @@ declare global {
         close: () => void;
         expand: () => void;
         ready: () => void;
+        openTelegramLink: (url: string) => void;
         showAlert: (message: string, callback?: () => void) => void;
         showConfirm: (message: string, callback: (confirmed: boolean) => void) => void;
         HapticFeedback?: {
@@ -57,6 +58,34 @@ export function getStartParam(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Si la Mini App a ete ouverte via le lien direct du bot mere avec
+ * startapp=adw_<clone_bot_id> (flux "pub pour un bot clone"), retourne
+ * l'ID du bot clone concerne. undefined sinon (ouverture normale).
+ */
+export function getAdwCloneId(): string | undefined {
+  const startParam = getStartParam();
+  if (startParam && startParam.startsWith("adw_")) {
+    const id = startParam.slice(4);
+    if (/^\d+$/.test(id)) return id;
+  }
+  return undefined;
+}
+
+/**
+ * Redirige automatiquement l'utilisateur vers un chat/bot Telegram.
+ * Utilise l'API native pour rester dans l'app Telegram (pas de navigateur).
+ */
+export function openTelegramLink(url: string) {
+  try {
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+      window.Telegram.WebApp.openTelegramLink(url);
+      return;
+    }
+  } catch {}
+  window.location.href = url;
 }
 
 /**

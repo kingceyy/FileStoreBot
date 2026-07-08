@@ -9,7 +9,7 @@ import { Card } from "@/components/fs/Card";
 import { SessionStatus } from "@/components/shared/SessionStatus";
 import { fadeUp, staggerContainer, scaleIn } from "@/lib/animations";
 import { checkSession, watchAd } from "@/lib/api";
-import { expandWebApp, getQueryParams, getTelegramUser, hapticSuccess, hapticError } from "@/lib/telegram";
+import { expandWebApp, getQueryParams, getTelegramUser, getAdwCloneId, openTelegramLink, hapticSuccess, hapticError } from "@/lib/telegram";
 
 type StepState = "idle" | "running" | "done" | "error";
 
@@ -112,7 +112,12 @@ export function IndexPage() {
   const user = getTelegramUser();
   const userId = user?.id ?? 0;
 
-  const { cloneId, idPubs } = getQueryParams();
+  const { cloneId: urlCloneId, idPubs } = getQueryParams();
+  // Si la Mini App a ete ouverte via le lien direct du bot mere avec
+  // startapp=adw_<clone_id> (flux pub pour bot clone), ce clone_id est
+  // prioritaire sur celui de l'URL classique.
+  const adwCloneId = getAdwCloneId();
+  const cloneId = adwCloneId || urlCloneId;
 
   useEffect(() => {
     expandWebApp();
@@ -173,6 +178,14 @@ export function IndexPage() {
     hapticSuccess();
     setSuccess(true);
     setRunning(false);
+
+    // Flux "adw_" : on est passe par le bot mere pour la pub, on renvoie
+    // automatiquement l'utilisateur vers son bot clone d'origine.
+    if (adwCloneId && res?.bot_username) {
+      setTimeout(() => {
+        openTelegramLink(`https://t.me/${res.bot_username}`);
+      }, 1800);
+    }
   };
 
   if (loading) return (
@@ -278,7 +291,9 @@ export function IndexPage() {
               Acces debloque avec succes
             </Button>
             <p className="text-xs text-[#FFFFF0]/45 text-center leading-relaxed">
-              Retournez au bot Telegram et cliquez sur le lien de votre fichier.
+              {adwCloneId
+                ? "Retour automatique vers votre bot dans un instant..."
+                : "Retournez au bot Telegram et cliquez sur le lien de votre fichier."}
             </p>
           </motion.div>
         ) : (

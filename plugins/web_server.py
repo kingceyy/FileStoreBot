@@ -735,17 +735,21 @@ async def api_check_session(request):
 async def api_watch_ad(request):
     """
     Active une session gratuite apres visionnage de pub.
-    Supporte le bot mere (bot_id=0) ET les bots clones via id_pubs.
-    Si id_pubs est fourni on redirige vers la logique clone.
+    Supporte le bot mere (bot_id=0), les bots clones via id_pubs,
+    ET les bots clones via clone_id direct (flux Mini App "Direct Link"
+    ouverte depuis le bot mere avec startapp=adw_<clone_id>).
     """
     try:
-        data    = await request.json()
-        user_id = data.get('user_id')
-        id_pubs = data.get('id_pubs', '').strip().upper()
-        auth    = data.get('auth')
+        data     = await request.json()
+        user_id  = data.get('user_id')
+        id_pubs  = data.get('id_pubs', '').strip().upper()
+        clone_id = data.get('clone_id')
+        auth     = data.get('auth')
 
         if not user_id:
             return web.json_response({'error': 'Missing user_id'}, status=400)
+
+        bot_username = None
 
         # Si id_pubs fourni → logique clone (meme traitement que watch-ad-clone)
         if id_pubs:
@@ -753,6 +757,20 @@ async def api_watch_ad(request):
             bot_id, bot_info, error = await resolve_bot_id_from_id_pubs(id_pubs)
             if error:
                 return web.json_response({'success': False, 'error': error}, status=400)
+            if bot_info and not bot_info.get('is_mother'):
+                bot_username = bot_info.get('bot_username')
+        elif clone_id is not None:
+            # Flux "adw_" : le clone_id vient du start_param signe, resolu cote client
+            try:
+                bot_id = int(clone_id)
+            except (ValueError, TypeError):
+                return web.json_response({'success': False, 'error': 'clone_id invalide'}, status=400)
+            logger.info(f"Watch ad (via clone_id={bot_id}) - User: {user_id}")
+            bot_data = await db.get_cloned_bot(bot_id)
+            if not bot_data:
+                return web.json_response({'success': False, 'error': 'Bot clone introuvable'}, status=400)
+            bot_info = bot_data
+            bot_username = bot_data.get('bot_username')
         else:
             logger.info(f"Watch ad (bot mere) - User: {user_id}")
             bot_id   = MOTHER_BOT_ID
@@ -768,7 +786,11 @@ async def api_watch_ad(request):
         try:
             if await db.has_active_session(user_id, bot_id):
                 logger.info(f"User {user_id} a deja une session active sur bot {bot_id}")
-                return web.json_response({'success': False, 'message': 'Session already active'})
+                return web.json_response({
+                    'success': False,
+                    'message': 'Session already active',
+                    'bot_username': bot_username
+                })
         except Exception as e:
             logger.error(f"Erreur DB has_active_session: {e}")
             return web.json_response({'error': f'DB Error: {str(e)}'}, status=500)
@@ -789,10 +811,11 @@ async def api_watch_ad(request):
                 logger.warning(f"Gains non credites pour bot {bot_id}: {eg}")
 
             return web.json_response({
-                'success':    True,
-                'duration':   duration,
-                'expires_at': session.get('expires_at'),
-                'message':    'Session activated successfully'
+                'success':      True,
+                'duration':     duration,
+                'expires_at':   session.get('expires_at'),
+                'message':      'Session activated successfully',
+                'bot_username': bot_username
             })
         except Exception as e:
             logger.error(f"Erreur creation session: {e}")

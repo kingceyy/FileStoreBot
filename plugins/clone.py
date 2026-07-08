@@ -86,7 +86,7 @@ async def clone_bot_command(client: Bot, message: Message):
             "<b>Usage:</b> <code>/clone {BOT_TOKEN}</code>\n\n"
             "<b>Exemple:</b>\n"
             "<code>/clone 89171999:HKqjakakxxxxxxxxxxxxx</code>\n\n"
-            "<i>Obtenez votre token depuis @BotFather.\n\n",
+            "<i>Obtenez votre token depuis @BotFather.</i>",
             quote=True
         )
     

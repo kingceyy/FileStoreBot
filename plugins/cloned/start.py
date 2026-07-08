@@ -14,6 +14,14 @@ try:
     from config import ADSGRAM_WEBAPP_URL
 except ImportError:
     ADSGRAM_WEBAPP_URL = None
+try:
+    from config import MOTHER_BOT_LINK
+except ImportError:
+    MOTHER_BOT_LINK = "https://t.me/YumeFlowerBot"
+
+# Nom court de la Mini App "Direct Link" enregistrée via @BotFather (/newapp)
+# sur le bot mère. C'est celui utilisé dans https://t.me/<bot>/<CE_NOM>
+MOTHER_BOT_APP_SHORTNAME = "app"
 
 
 # ============================================================
@@ -215,7 +223,7 @@ async def handle_file_link(client: Client, message: Message, base64_string: str)
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 "Regarder la publicité (Gratuit)",
-                web_app=WebAppInfo(url=f"{web_app_url}/?id_pubs={id_pubs}&clone_id={bot_id}")
+                url=f"{MOTHER_BOT_LINK}/{MOTHER_BOT_APP_SHORTNAME}?startapp=adw_{bot_id}"
             )],
             [InlineKeyboardButton(
                 "Voir les plans Premium",
@@ -360,7 +368,7 @@ async def check_session_callback(client: Client, callback_query):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton(
                     "Regarder la publicité",
-                    web_app=WebAppInfo(url=f"{web_app_url}/?id_pubs={id_pubs}&clone_id={bot_id}")
+                    url=f"{MOTHER_BOT_LINK}/{MOTHER_BOT_APP_SHORTNAME}?startapp=adw_{bot_id}"
                 )],
                 [InlineKeyboardButton("Fermer", callback_data="close")]
             ]),

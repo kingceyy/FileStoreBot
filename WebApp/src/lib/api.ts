@@ -51,7 +51,7 @@ export async function watchAd(userId: number, cloneId?: string, idPubs?: string)
   return call("/api/watch-ad", "POST", {
     user_id: userId,
     clone_id: cloneId,
-    id_pubs: idPubs || "YUMEFLOWER",
+    id_pubs: idPubs || (cloneId ? undefined : "YUMEFLOWER"),
   });
 }
 
