@@ -1905,10 +1905,23 @@ async def process_channel_set(client: Bot, message: Message):
         
         channel_id = int(channel_id_str)
         
-        # Vérifier que le bot est admin du canal (test via get_chat)
+        # Récupérer le client du bot CLONÉ (c'est lui qui doit être admin du canal,
+        # pas le bot mère : le bot mère n'a jamais accès à ce chat -> CHANNEL_INVALID)
+        from plugins.clone import cloned_clients
+        cloned_client = cloned_clients.get(bot_id)
+
+        if not cloned_client:
+            return await message.reply_text(
+                "❌ <b>Le bot cloné n'est pas en ligne (pas en mémoire).</b>\n\n"
+                "Le bot cloné doit être démarré pour pouvoir vérifier son accès au canal.\n"
+                "Redémarrez-le puis réessayez, ou envoyez /annuler",
+                parse_mode=ParseMode.HTML
+            )
+
+        # Vérifier que le bot CLONÉ est admin du canal (test via get_chat)
         try:
-            chat = await client.get_chat(channel_id)
-            # Si on arrive ici, le bot a accès au canal
+            chat = await cloned_client.get_chat(channel_id)
+            # Si on arrive ici, le bot cloné a accès au canal
             await db.update_bot_settings(bot_id, {'channel_id': channel_id})
             clear_state(user_id)
             
@@ -2271,6 +2284,12 @@ async def gestion_session_dur_callback(client: Bot, callback: CallbackQuery):
 async def handle_pending_input(client: Bot, message: Message):
     """Intercepte les reponses aux actions en attente (ex: duree session)"""
     try:
+        # Ne jamais intercepter une commande (ex: /clone, /add_admin, /start...)
+        # sinon ce handler "attrape-tout" peut avaler le message avant que
+        # le vrai handler de la commande ne soit essayé.
+        if message.text and message.text.startswith('/'):
+            return
+
         user_id = message.from_user.id
         pending = await db.db["pending_inputs"].find_one({"user_id": user_id})
         if not pending:

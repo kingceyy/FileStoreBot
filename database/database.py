@@ -202,8 +202,8 @@ class Rohit:
     async def get_all_admins(self) -> List[int]:
         if not self._initialized:
             await self.init()
-        cursor = self.db.admins.find({}, {"admin_id": 1})
-        return [doc["admin_id"] async for doc in cursor]
+        cursor = self.db.admins.find({"admin_id": {"$exists": True}}, {"admin_id": 1})
+        return [doc["admin_id"] async for doc in cursor if "admin_id" in doc]
 
     # ==========================================
     # BAN USER DATA (Global)
