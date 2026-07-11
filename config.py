@@ -16,7 +16,7 @@ API_HASH     = os.environ.get("API_HASH", "30db27d9e56d854fb5e943723268db32")
 # ==========================================
 
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1003723207523"))
-OWNER      = os.environ.get("OWNER", "YumeFlowerBot")
+OWNER      = os.environ.get("OWNER", "ZeeXFileStoreBot")
 OWNER_ID   = int(os.environ.get("OWNER_ID", "8467461906"))
 
 DB_URI  = os.environ.get("DATABASE_URL", "mongodb+srv://elisabethboko45_db_user:kmrLKNKnfe8lK1df@cluster0.isv90ao.mongodb.net/?appName=Cluster0")
@@ -58,7 +58,7 @@ FORCE_PIC = os.environ.get("FORCE_PIC", "https://files.catbox.moe/42lm1v.jpg")
 # ==========================================
 
 HELP_TXT = (
-    "<b>Bienvenue sur YumeFlower</b>\n\n"
+    "<b>Bienvenue sur ZeeX File Store</b>\n\n"
     "<blockquote>"
     "Bot de stockage et de partage de fichiers propulsé par @kingceyy.\n\n"
     "Partagez vos fichiers anime, manga et bien plus encore avec votre communauté.\n\n"
@@ -67,9 +67,9 @@ HELP_TXT = (
 )
 
 ABOUT_TXT = (
-    "<b>YumeFlower — Plateforme de partage de fichiers</b>\n\n"
+    "<b>ZeeX File Store — Plateforme de partage de fichiers</b>\n\n"
     "<blockquote>"
-    "YumeFlower est un bot open-source de stockage et de partage de fichiers Telegram.\n\n"
+    "ZeeX File Store est un bot open-source de stockage et de partage de fichiers Telegram.\n\n"
     "<b>Clonez votre propre bot</b>\n"
     "En une seule commande <code>/clone</code>, obtenez votre propre bot personnalisé.\n"
     "Votre nom, votre image, votre communauté.\n\n"
@@ -86,7 +86,7 @@ START_MSG = os.environ.get(
     "START_MESSAGE",
     "<b>Bienvenue, {first}</b>\n\n"
     "<blockquote>"
-    "YumeFlower est votre bot de stockage de fichiers.\n\n"
+    "ZeeX File Store est votre bot de stockage de fichiers.\n\n"
     "Vous pouvez créer votre propre bot et gagner de l'argent grâce aux publicités affichées à vos utilisateurs.\n\n"
     "Commande : /clone"
     "</blockquote>"
@@ -164,7 +164,7 @@ def LOGGER(name: str) -> logging.Logger:
 # CONFIGURATION SYSTÈME DE CLONAGE
 # ==========================================
 
-MOTHER_BOT_USERNAME      = os.environ.get("MOTHER_BOT_USERNAME", "YumeFlowerBot")
+MOTHER_BOT_USERNAME      = os.environ.get("MOTHER_BOT_USERNAME", "ZeeXFileStoreBot")
 MOTHER_BOT_LINK          = f"https://t.me/{MOTHER_BOT_USERNAME}"
 EARNING_PER_IMPRESSION   = float(os.environ.get("EARNING_PER_IMPRESSION", "0.001"))
 MIN_WITHDRAWAL_AMOUNT    = float(os.environ.get("MIN_WITHDRAWAL_AMOUNT", "7.00"))

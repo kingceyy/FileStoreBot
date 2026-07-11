@@ -17,7 +17,7 @@ except ImportError:
 try:
     from config import MOTHER_BOT_LINK
 except ImportError:
-    MOTHER_BOT_LINK = "https://t.me/YumeFlowerBot"
+    MOTHER_BOT_LINK = "https://t.me/ZeeXFileStoreBot"
 
 # Nom court de la Mini App "Direct Link" enregistrée via @BotFather (/newapp)
 # sur le bot mère. C'est celui utilisé dans https://t.me/<bot>/<CE_NOM>
@@ -55,7 +55,7 @@ async def build_start_keyboard(bot_id: int, bot_username: str) -> InlineKeyboard
         from config import MOTHER_BOT_USERNAME as TG_BOT_USERNAME
         mother_bot = TG_BOT_USERNAME
     except ImportError:
-        mother_bot = "YumeFlowerBot"
+        mother_bot = "ZeeXFileStoreBot"
     keyboard.append([InlineKeyboardButton(
         "Créer mon propre bot",
         url=f"https://t.me/{mother_bot}?start=clone"
@@ -88,7 +88,7 @@ async def get_start_message(bot_id: int, user) -> str:
         f"1. Recevez un lien de fichier\n"
         f"2. Cliquez sur le lien\n"
         f"3. Regardez une pub pour débloquer l'accès\n\n"
-        f"<i>Propulsé par <a href='https://t.me/Kingceyy'>Kingcey</a></i>"
+        f"<i>Propulsé par <a href='https://t.me/itz_Kingcey'>Kingcey</a></i>"
     )
 
 
