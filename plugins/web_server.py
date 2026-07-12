@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 MOTHER_BOT_ID_PUBS = "YUMEFLOWER"
-MOTHER_BOT_ID_CODE = "KINGCEY00"
+MOTHER_BOT_ID_CODE = "KINGCEY0"
 MOTHER_BOT_ID      = 0  # bot_id=0 → bot mère dans la DB sessions
 
 # ============================================================

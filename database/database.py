@@ -65,7 +65,7 @@ class Rohit:
                     {"$set": {
                         "bot_id": 0,
                         "id_pubs": "YUMEFLOWER",
-                        "id_code": "KINGCEY00",
+                        "id_code": "KINGCEY0",
                         "master_id": 0,
                         "is_mother_bot": True,
                         "created_at": now,
@@ -651,7 +651,7 @@ class Rohit:
         now = datetime.now(timezone.utc)
 
         id_pubs = self.generate_unique_id(12)
-        id_code = self.generate_unique_id(16)
+        id_code = self.generate_unique_id(8)
 
         bot_data = {
             "bot_id": bot_id,
@@ -812,7 +812,7 @@ class Rohit:
             return None
 
         new_id_pubs = self.generate_unique_id(12)
-        new_id_code = self.generate_unique_id(16)
+        new_id_code = self.generate_unique_id(8)
 
         await self.db.id_codes.update_one(
             {"bot_id": bot_id},

@@ -48,23 +48,24 @@ async def show_bots_list(message_or_callback, bots: list, page: int = 0, per_pag
     
     for i, bot in enumerate(current_bots, start_idx + 1):
         # Récupérer les infos supplémentaires
-        id_codes = await db.get_id_codes(bot_id=bot['_id'])
-        earnings = await db.get_bot_earnings(bot['_id'])
+        id_codes = await db.get_id_codes(bot_id=bot['bot_id'])
+        earnings = await db.get_bot_earnings(bot['bot_id'])
         
         status = "🟢" if bot.get('is_active', True) else "🔴"
         
+        balance = earnings['balance'] if earnings else 0.0
         text += (
             f"{i}. {status} @{bot['bot_username']}\n"
             f"   Maître : <code>{bot['master_id']}</code>\n"
             f"   ID_PUBS : <code>{id_codes['id_pubs'] if id_codes else 'N/A'}</code>\n"
-            f"   Solde : ${earnings['balance']:.2f if earnings else 0:.2f}\n"
+            f"   Solde : ${balance:.2f}\n"
             f"   Créé le : {bot['created_at'][:10]}\n\n"
         )
         
         # Bouton pour voir les détails
         buttons.append([InlineKeyboardButton(
             f"Détails @{bot['bot_username']}",
-            callback_data=f"list_details_{bot['_id']}"
+            callback_data=f"list_details_{bot['bot_id']}"
         )])
     
     # Boutons de pagination
