@@ -330,7 +330,7 @@ async def restart_all_cloned_bots():
     bots = await db.get_all_cloned_bots()
     
     started = 0
-    failed = 0
+    failed_ids = []
     
     for bot_data in bots:
         if bot_data.get('is_active', True):
@@ -338,17 +338,54 @@ async def restart_all_cloned_bots():
             real_bot_id = bot_data.get('bot_id')
             if real_bot_id is None:
                 logger.warning(f"[CLONE] Bot sans bot_id ignoré: {bot_data.get('_id')}")
-                failed += 1
+                failed_ids.append(None)
                 continue
             success = await start_cloned_bot(int(real_bot_id))
             if success:
                 started += 1
             else:
-                failed += 1
-            await asyncio.sleep(1)  # Éviter le flood
+                failed_ids.append(int(real_bot_id))
+            # ✅ 2.5s au lieu d'1s : Telegram peut rejeter temporairement
+            # (ACCESS_TOKEN_EXPIRED) certains tokens quand trop de bots
+            # differents sont importes coup sur coup avec le meme api_id.
+            await asyncio.sleep(2.5)
     
-    logger.info(f"[CLONE] {started} bots démarrés, {failed} échecs")
-    return started, failed
+    real_failed_ids = [b for b in failed_ids if b is not None]
+    logger.info(f"[CLONE] {started} bots démarrés, {len(real_failed_ids)} échecs au 1er passage")
+
+    if real_failed_ids:
+        # ✅ Reessai en tache de fond (hors timeout de demarrage du bot mere),
+        # une fois la rafale initiale retombee cote Telegram. Evite d'avoir
+        # a revoquer/recloner manuellement pour un echec souvent temporaire.
+        asyncio.create_task(_retry_failed_clones(real_failed_ids))
+
+    return started, len(real_failed_ids)
+
+
+async def _retry_failed_clones(failed_ids: list):
+    """
+    Reessaie apres un delai les bots clones qui ont echoue au demarrage.
+    La plupart des ACCESS_TOKEN_EXPIRED pendant restart_all_cloned_bots
+    sont un rejet temporaire de Telegram (trop d'imports de tokens
+    differents coup sur coup), pas un vrai token revoque.
+    """
+    logger.info(f"[CLONE] Nouvelle tentative dans 90s pour {len(failed_ids)} bot(s): {failed_ids}")
+    await asyncio.sleep(90)
+
+    recovered = 0
+    still_failed = []
+    for bot_id in failed_ids:
+        success = await start_cloned_bot(bot_id)
+        if success:
+            recovered += 1
+        else:
+            still_failed.append(bot_id)
+        await asyncio.sleep(2.5)
+
+    logger.info(
+        f"[CLONE] Reessai terminé: {recovered} récupéré(s), "
+        f"{len(still_failed)} toujours en échec: {still_failed}"
+    )
 
 
 # Démarrer tous les bots clonés au lancement

@@ -64,7 +64,7 @@ async def main():
         from plugins.clone import init_cloned_bots
         
         # Timeout de 60 secondes max pour ne pas bloquer le bot mère
-        await asyncio.wait_for(init_cloned_bots(), timeout=60.0)
+        await asyncio.wait_for(init_cloned_bots(), timeout=120.0)
         print("✅ Bots clonés initialisés!")
     except asyncio.TimeoutError:
         print("⚠️ Timeout: démarrage des clones trop long — bot mère continue normalement")
