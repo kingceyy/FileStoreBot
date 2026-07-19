@@ -1179,7 +1179,8 @@ async def gestion_admins_callback(client: Bot, callback: CallbackQuery):
             return await callback.answer("⛔ Seul le MAITRE peut gérer les admins", show_alert=True)
         
         bot_data = await db.get_cloned_bot(bot_id)
-        admins = bot_data.get('admins', [])
+        admins_list = await db.get_bot_admins(bot_id)
+        admins = [a['user_id'] for a in admins_list if a.get('role') == 'admin']
         
         text = (
             f"<b>👥 Gestion des Administrateurs</b>\n\n"
@@ -1261,7 +1262,8 @@ async def gestion_admin_del_menu_callback(client: Bot, callback: CallbackQuery):
             return await callback.answer("⛔ Accès refusé", show_alert=True)
         
         bot_data = await db.get_cloned_bot(bot_id)
-        admins = bot_data.get('admins', [])
+        admins_list = await db.get_bot_admins(bot_id)
+        admins = [a['user_id'] for a in admins_list if a.get('role') == 'admin']
         
         if not admins:
             return await callback.answer("❌ Aucun admin à retirer", show_alert=True)
@@ -1301,12 +1303,10 @@ async def gestion_admin_del_callback(client: Bot, callback: CallbackQuery):
         if not await can_manage_bot(user_id, bot_id, 'maitre'):
             return await callback.answer("⛔ Accès refusé", show_alert=True)
         
-        bot_data = await db.get_cloned_bot(bot_id)
-        admins = bot_data.get('admins', [])
+        existing_role = await db.get_user_bot_role(bot_id, admin_id)
         
-        if admin_id in admins:
-            admins.remove(admin_id)
-            await db.update_bot_settings(bot_id, {'admins': admins})
+        if existing_role:
+            await db.remove_bot_admin(bot_id, admin_id)
             
             try:
                 user = await client.get_users(admin_id)
@@ -2045,16 +2045,14 @@ async def process_admin_add(client: Bot, message: Message):
                 "L'utilisateur doit avoir démarré le bot au moins une fois."
             )
         
-        # Ajouter à la liste
-        bot_data = await db.get_cloned_bot(bot_id)
-        admins = bot_data.get('admins', [])
+        # Ajouter dans le vrai systeme de permissions (collection bot_admins)
+        existing_role = await db.get_user_bot_role(bot_id, new_admin_id)
         
-        if new_admin_id in admins:
+        if existing_role:
             clear_state(user_id)
             return await message.reply_text("❌ Cet utilisateur est déjà admin!")
         
-        admins.append(new_admin_id)
-        await db.update_bot_settings(bot_id, {'admins': admins})
+        await db.add_bot_admin(bot_id, new_admin_id, "admin", user_id)
         clear_state(user_id)
         
         await message.reply_text(

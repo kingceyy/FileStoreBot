@@ -63,7 +63,10 @@ EXCLUDED_COMMANDS = [
     'start', 'genlink', 'batch', 'stats', 'users',
     'addchnl', 'delchnl', 'listchnl', 'fsub_mode',
     'addfsub', 'delfsub', 'broadcast', 'settings',
-    'ban', 'unban', 'cancel', 'annuler'
+    'ban', 'unban', 'cancel', 'annuler',
+    'add_admin', 'deladmin', 'admins', 'banlist',
+    'dlt_time', 'check_dlt_time', 'pbroadcast',
+    'dbroadcast', 'custom_batch'
 ]
 
 

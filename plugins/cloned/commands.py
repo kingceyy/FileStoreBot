@@ -251,13 +251,12 @@ async def add_admin_command(client: Client, message: Message):
         return await message.reply_text("⛔ Seul le MAITRE peut ajouter des admins", quote=True)
     
     try:
-        # Ajouter à la liste
-        admins = bot_data.get('admins', [])
-        if new_admin_id in admins:
+        # Ajouter dans le vrai systeme de permissions (collection bot_admins)
+        existing_role = await db.get_user_bot_role(bot_id, new_admin_id)
+        if existing_role:
             return await message.reply_text("❌ Cet utilisateur est déjà admin", quote=True)
         
-        admins.append(new_admin_id)
-        await db.update_bot_settings(bot_id, {'admins': admins})
+        await db.add_bot_admin(bot_id, new_admin_id, "admin", message.from_user.id)
         
         # Essayer de récupérer les infos
         try:
@@ -307,12 +306,11 @@ async def deladmin_command(client: Client, message: Message):
         return await message.reply_text("❌ Impossible de retirer le maître", quote=True)
     
     try:
-        admins = bot_data.get('admins', [])
-        if admin_id_to_remove not in admins:
+        existing_role = await db.get_user_bot_role(bot_id, admin_id_to_remove)
+        if not existing_role:
             return await message.reply_text("❌ Cet utilisateur n'est pas admin", quote=True)
         
-        admins.remove(admin_id_to_remove)
-        await db.update_bot_settings(bot_id, {'admins': admins})
+        await db.remove_bot_admin(bot_id, admin_id_to_remove)
         
         await message.reply_text(
             f"<b>✅ Administrateur retiré</b>\n\n"
@@ -334,8 +332,9 @@ async def admins_command(client: Client, message: Message):
     bot_id = client.me.id
     
     bot_data = await db.get_cloned_bot(bot_id)
-    admins = bot_data.get('admins', [])
+    admins_list = await db.get_bot_admins(bot_id)
     master_id = bot_data.get('master_id') or bot_data.get('owner_id')
+    admins = [a['user_id'] for a in admins_list if a.get('role') == 'admin']
     
     text = "<b>👥 Liste des Administrateurs</b>\n\n"
     
