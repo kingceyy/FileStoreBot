@@ -5,11 +5,19 @@
 
 import asyncio
 import base64
+from datetime import datetime, timedelta
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from pyrogram.enums import ParseMode
 from pyrogram.errors import FloodWait
 from database.database import db
+from helper_func import is_subscribed_clone, is_sub_clone
+try:
+    from config import FSUB_LINK_EXPIRY, FORCE_PIC, FORCE_MSG
+except ImportError:
+    FSUB_LINK_EXPIRY = 840
+    FORCE_PIC = None
+    FORCE_MSG = "<b>Vous devez rejoindre nos canaux pour accéder à ce fichier.</b>"
 try:
     from config import ADSGRAM_WEBAPP_URL
 except ImportError:
@@ -17,7 +25,7 @@ except ImportError:
 try:
     from config import MOTHER_BOT_LINK
 except ImportError:
-    MOTHER_BOT_LINK = "https://t.me/ZeeXFileStoreBot"
+    MOTHER_BOT_LINK = "https://t.me/YumeFlowerBot"
 
 # Nom court de la Mini App "Direct Link" enregistrée via @BotFather (/newapp)
 # sur le bot mère. C'est celui utilisé dans https://t.me/<bot>/<CE_NOM>
@@ -55,7 +63,7 @@ async def build_start_keyboard(bot_id: int, bot_username: str) -> InlineKeyboard
         from config import MOTHER_BOT_USERNAME as TG_BOT_USERNAME
         mother_bot = TG_BOT_USERNAME
     except ImportError:
-        mother_bot = "ZeeXFileStoreBot"
+        mother_bot = "YumeFlowerBot"
     keyboard.append([InlineKeyboardButton(
         "Créer mon propre bot",
         url=f"https://t.me/{mother_bot}?start=clone"
@@ -88,7 +96,7 @@ async def get_start_message(bot_id: int, user) -> str:
         f"1. Recevez un lien de fichier\n"
         f"2. Cliquez sur le lien\n"
         f"3. Regardez une pub pour débloquer l'accès\n\n"
-        f"<i>Propulsé par <a href='https://t.me/itz_Kingcey'>Kingcey</a></i>"
+        f"<i>Propulsé par <a href='https://t.me/Kingceyy'>Kingcey</a></i>"
     )
 
 
@@ -189,6 +197,82 @@ async def cloned_start_handler(client: Client, message: Message):
 # GESTION DES LIENS DE FICHIERS
 # ============================================================
 
+async def not_joined_clone(client: Client, message: Message, bot_id: int):
+    """Affiche les canaux force-sub restants à rejoindre pour ce bot cloné"""
+    temp = await message.reply("<b>Vérification en cours...</b>")
+    user_id = message.from_user.id
+    buttons = []
+
+    try:
+        channel_ids = await db.get_bot_fsub_channels(bot_id)
+        for chat_id in channel_ids:
+            mode = await db.get_bot_channel_mode(bot_id, chat_id)
+            if not await is_sub_clone(client, bot_id, user_id, chat_id):
+                try:
+                    data = await client.get_chat(chat_id)
+
+                    if mode == "on" and not data.username:
+                        invite = await client.create_chat_invite_link(
+                            chat_id=chat_id,
+                            creates_join_request=True,
+                            expire_date=(
+                                datetime.utcnow() + timedelta(seconds=FSUB_LINK_EXPIRY)
+                                if FSUB_LINK_EXPIRY else None
+                            )
+                        )
+                        link = invite.invite_link
+                    else:
+                        if data.username:
+                            link = f"https://t.me/{data.username}"
+                        else:
+                            invite = await client.create_chat_invite_link(
+                                chat_id=chat_id,
+                                expire_date=(
+                                    datetime.utcnow() + timedelta(seconds=FSUB_LINK_EXPIRY)
+                                    if FSUB_LINK_EXPIRY else None
+                                )
+                            )
+                            link = invite.invite_link
+
+                    buttons.append([InlineKeyboardButton(text=data.title, url=link)])
+                except Exception as e:
+                    print(f"[CLONE not_joined] Erreur canal {chat_id}: {e}")
+                    return await temp.edit(f"<b>Erreur technique</b>\n<code>{e}</code>")
+
+        try:
+            buttons.append([
+                InlineKeyboardButton(
+                    text="Vérifier à nouveau",
+                    url=f"https://t.me/{client.me.username}?start={message.command[1]}"
+                )
+            ])
+        except IndexError:
+            pass
+
+        await temp.delete()
+        if FORCE_PIC:
+            await message.reply_photo(
+                photo=FORCE_PIC,
+                caption=FORCE_MSG.format(
+                    first=message.from_user.first_name,
+                    last=message.from_user.last_name or "",
+                    username=f"@{message.from_user.username}" if message.from_user.username else "—",
+                    mention=message.from_user.mention,
+                    id=message.from_user.id
+                ),
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+        else:
+            await message.reply_text(
+                "<b>Rejoignez les canaux ci-dessous pour continuer :</b>",
+                reply_markup=InlineKeyboardMarkup(buttons),
+                parse_mode=ParseMode.HTML
+            )
+    except Exception as e:
+        print(f"[CLONE not_joined] Erreur finale: {e}")
+        await temp.edit(f"<b>Erreur critique</b>\n<code>{e}</code>")
+
+
 async def handle_file_link(client: Client, message: Message, base64_string: str):
     """Gère les liens de fichiers pour les bots clonés"""
     bot_id = client.me.id
@@ -199,52 +283,61 @@ async def handle_file_link(client: Client, message: Message, base64_string: str)
     print(f"[CLONE DEBUG] User ID: {user_id}")
     print(f"[CLONE DEBUG] Base64: {base64_string}")
 
-    # Vérifier si l'utilisateur a une session active pour CE bot
-    has_access = await db.has_active_session(user_id, bot_id)
-    print(f"[CLONE DEBUG] has_active_session({user_id}, {bot_id}) = {has_access}")
+    # Vérification Force-Sub (toujours appliquée, même si les pubs sont désactivées)
+    if not await is_subscribed_clone(client, bot_id, user_id):
+        return await not_joined_clone(client, message, bot_id)
 
-    if not has_access:
-        # Récupérer l'ID_PUBS du bot
-        id_codes = await db.get_id_codes(bot_id=bot_id)
-        id_pubs = id_codes['id_pubs'] if id_codes else None
-        
-        print(f"[CLONE DEBUG] ID_PUBS for bot {bot_id}: {id_pubs}")
+    # Pubs désactivées par le maître ? → accès direct, sans session ni pub
+    bot_settings_data = await db.get_cloned_bot(bot_id)
+    ads_disabled = bot_settings_data.get('settings', {}).get('ads_disabled', False) if bot_settings_data else False
 
-        if not id_pubs:
+    if not ads_disabled:
+        # Vérifier si l'utilisateur a une session active pour CE bot
+        has_access = await db.has_active_session(user_id, bot_id)
+        print(f"[CLONE DEBUG] has_active_session({user_id}, {bot_id}) = {has_access}")
+
+        if not has_access:
+            # Récupérer l'ID_PUBS du bot
+            id_codes = await db.get_id_codes(bot_id=bot_id)
+            id_pubs = id_codes['id_pubs'] if id_codes else None
+            
+            print(f"[CLONE DEBUG] ID_PUBS for bot {bot_id}: {id_pubs}")
+
+            if not id_pubs:
+                await message.reply_text(
+                    "❌ <b>Erreur de configuration</b>\n\n"
+                    "Ce bot n'a pas d'ID_PUBS configuré. Contactez le maître du bot.",
+                    parse_mode=ParseMode.HTML
+                )
+                return
+
+            web_app_url = ADSGRAM_WEBAPP_URL or f"https://{client.me.username}.onrender.com"
+
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(
+                    "Regarder la publicité (Gratuit)",
+                    url=f"{MOTHER_BOT_LINK}/{MOTHER_BOT_APP_SHORTNAME}?startapp=adw_{bot_id}"
+                )],
+                [InlineKeyboardButton(
+                    "Voir les plans Premium",
+                    web_app=WebAppInfo(url=f"{web_app_url}/prime?id_pubs={id_pubs}&clone_id={bot_id}")
+                )]
+            ])
+
+            try:
+                free_duration = await db.get_free_session_duration()
+            except Exception:
+                free_duration = 30
+
             await message.reply_text(
-                "❌ <b>Erreur de configuration</b>\n\n"
-                "Ce bot n'a pas d'ID_PUBS configuré. Contactez le maître du bot.",
+                f"<b>Accès requis</b>\n\n"
+                f"Vous n'avez pas de session active pour ce bot.\n\n"
+                f"<b>Option gratuite</b> — Regardez une publicité pour {free_duration} minutes d'accès.\n"
+                f"<b>Option Premium</b> — Accès illimité selon le plan choisi.",
+                reply_markup=keyboard,
                 parse_mode=ParseMode.HTML
             )
             return
-
-        web_app_url = ADSGRAM_WEBAPP_URL or f"https://{client.me.username}.onrender.com"
-
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "Regarder la publicité (Gratuit)",
-                url=f"{MOTHER_BOT_LINK}/{MOTHER_BOT_APP_SHORTNAME}?startapp=adw_{bot_id}"
-            )],
-            [InlineKeyboardButton(
-                "Voir les plans Premium",
-                web_app=WebAppInfo(url=f"{web_app_url}/prime?id_pubs={id_pubs}&clone_id={bot_id}")
-            )]
-        ])
-
-        try:
-            free_duration = await db.get_free_session_duration()
-        except Exception:
-            free_duration = 30
-
-        await message.reply_text(
-            f"<b>Accès requis</b>\n\n"
-            f"Vous n'avez pas de session active pour ce bot.\n\n"
-            f"<b>Option gratuite</b> — Regardez une publicité pour {free_duration} minutes d'accès.\n"
-            f"<b>Option Premium</b> — Accès illimité selon le plan choisi.",
-            reply_markup=keyboard,
-            parse_mode=ParseMode.HTML
-        )
-        return
 
     # L'utilisateur a accès → récupérer le fichier
     try:

@@ -2352,22 +2352,64 @@ async def gestion_settings_callback(client: Bot, callback: CallbackQuery):
         if not await can_manage_bot(user_id, bot_id, 'maitre'):
             return await callback.answer("⛔ Accès refusé", show_alert=True)
         
-        text = (
-            f"<b>⚙️ Paramètres du Bot</b>\n\n"
-            f"<i>Fonctionnalités à venir:</i>\n"
-            f"• Langue du bot\n"
-            f"• Restrictions d'accès\n"
-            f"• Configuration avancée\n\n"
-            f"<i>Contactez le support pour plus d'options.</i>"
-        )
-        
-        buttons = [[InlineKeyboardButton("‹ Retour", callback_data=f"gestion_select_{bot_id}")]]
-        
-        await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.HTML)
+        await _render_gestion_settings(callback, bot_id)
         await callback.answer()
         
     except Exception as e:
         logger.error(f"Erreur gestion_settings: {e}")
+        await callback.answer("❌ Erreur", show_alert=True)
+
+
+async def _render_gestion_settings(callback: CallbackQuery, bot_id: int):
+    """Construit et affiche l'écran Paramètres (réutilisé par le toggle ads)"""
+    bot_data = await db.get_cloned_bot(bot_id)
+    ads_disabled = bot_data.get('settings', {}).get('ads_disabled', False) if bot_data else False
+    ads_status = "🔴 Désactivées" if ads_disabled else "🟢 Activées"
+    toggle_label = "🟢 Réactiver les pubs" if ads_disabled else "🔴 Désactiver les pubs"
+
+    text = (
+        f"<b>⚙️ Paramètres du Bot</b>\n\n"
+        f"<b>Publicités :</b> {ads_status}\n\n"
+        f"<i>Si désactivées, les utilisateurs reçoivent leurs fichiers directement, "
+        f"sans regarder de pub ni ouvrir de session — mais aucun gain n'est généré "
+        f"sur ce bot. Le Force-Sub, si configuré, reste appliqué.</i>\n\n"
+        f"<i>À venir : langue du bot, restrictions d'accès.</i>"
+    )
+
+    buttons = [
+        [InlineKeyboardButton(toggle_label, callback_data=f"gestion_toggle_ads_{bot_id}")],
+        [InlineKeyboardButton("‹ Retour", callback_data=f"gestion_select_{bot_id}")]
+    ]
+
+    await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.HTML)
+
+
+@Bot.on_callback_query(filters.regex(r"^gestion_toggle_ads_(\d+)$"))
+async def gestion_toggle_ads_callback(client: Bot, callback: CallbackQuery):
+    """Active/désactive les publicités (et donc les sessions/gains) pour ce bot"""
+    try:
+        bot_id = int(callback.matches[0].group(1))
+        user_id = callback.from_user.id
+        
+        if not await can_manage_bot(user_id, bot_id, 'maitre'):
+            return await callback.answer("⛔ Accès refusé", show_alert=True)
+        
+        bot_data = await db.get_cloned_bot(bot_id)
+        current = bot_data.get('settings', {}).get('ads_disabled', False) if bot_data else False
+        new_value = not current
+        
+        await db.update_bot_settings(bot_id, {'ads_disabled': new_value})
+        
+        await callback.answer(
+            "🔴 Publicités désactivées — plus aucun gain sur ce bot" if new_value
+            else "🟢 Publicités réactivées",
+            show_alert=True
+        )
+        
+        await _render_gestion_settings(callback, bot_id)
+        
+    except Exception as e:
+        logger.error(f"Erreur gestion_toggle_ads: {e}")
         await callback.answer("❌ Erreur", show_alert=True)
 
 

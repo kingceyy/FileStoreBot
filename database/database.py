@@ -1096,12 +1096,20 @@ class Rohit:
         if balance < amount:
             return {"success": False, "error": "Insufficient balance"}
 
+        # ✅ Anti-doublon : refuser une nouvelle demande si une demande
+        # est deja en attente pour ce bot (evite le double/triple debit
+        # quand le client reessaie apres une erreur de reponse).
+        for tx in earnings.get("transactions", []):
+            if tx.get("type") == "withdrawal" and tx.get("status") == "pending":
+                return {"success": False, "error": "Une demande de retrait est déjà en attente pour ce bot"}
+
+        now = datetime.now(timezone.utc)
         transaction = {
             "type": "withdrawal",
             "amount": amount,
             "method": method,
             "status": "pending",
-            "timestamp": datetime.now(timezone.utc)
+            "timestamp": now
         }
 
         await self.db.bot_earnings.update_one(
@@ -1114,7 +1122,13 @@ class Rohit:
 
         return {
             "success": True,
-            "transaction": transaction,
+            "transaction": {
+                "type": "withdrawal",
+                "amount": amount,
+                "method": method,
+                "status": "pending",
+                "timestamp": now.isoformat()
+            },
             "remaining_balance": balance - amount
         }
 
@@ -1216,10 +1230,13 @@ class Rohit:
         async for doc in cursor:
             for tx in doc.get("transactions", []):
                 if tx.get("type") == "withdrawal" and tx.get("status") == "pending":
+                    tx_copy = dict(tx)
+                    if isinstance(tx_copy.get("timestamp"), datetime):
+                        tx_copy["timestamp"] = tx_copy["timestamp"].isoformat()
                     pending.append({
                         "bot_id": doc["bot_id"],
                         "master_id": doc.get("master_id"),
-                        "transaction": tx
+                        "transaction": tx_copy
                     })
         return pending
 

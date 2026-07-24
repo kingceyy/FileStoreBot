@@ -69,6 +69,48 @@ async def is_sub(client, user_id, channel_id):
         return False
 
 
+# ==========================================
+# FORCE-SUB POUR LES BOTS CLONÉS
+# (même logique que ci-dessus, mais scopée à un bot_id
+#  et à sa propre liste de canaux bot_fsub_channels)
+# ==========================================
+
+async def is_sub_clone(client, bot_id, user_id, channel_id):
+    try:
+        member = await client.get_chat_member(channel_id, user_id)
+        return member.status in {
+            ChatMemberStatus.OWNER,
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.MEMBER
+        }
+    except UserNotParticipant:
+        mode = await db.get_bot_channel_mode(bot_id, channel_id)
+        if mode == "on":
+            return await db.req_user_exist(channel_id, user_id)
+        return False
+    except Exception as e:
+        print(f"[!] Error in is_sub_clone(): {e}")
+        return False
+
+
+async def is_subscribed_clone(client, bot_id, user_id):
+    channel_ids = await db.get_bot_fsub_channels(bot_id)
+
+    if not channel_ids:
+        return True
+
+    for cid in channel_ids:
+        if not await is_sub_clone(client, bot_id, user_id, cid):
+            mode = await db.get_bot_channel_mode(bot_id, cid)
+            if mode == "on":
+                await asyncio.sleep(2)  # laisse le temps à @on_chat_join_request de traiter
+                if await is_sub_clone(client, bot_id, user_id, cid):
+                    continue
+            return False
+
+    return True
+
+
 async def encode(string):
     string_bytes = string.encode("ascii")
     base64_bytes = base64.urlsafe_b64encode(string_bytes)

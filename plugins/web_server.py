@@ -523,9 +523,16 @@ async def api_master_withdraw(request):
         data = await request.json()
         id_code = data.get('id_code', '').strip().upper()
         amount = float(data.get('amount', 0))
-        method = data.get('method', 'crypto')  # crypto, moov, orange, ecobank
-        account_info = data.get('account_info', '')  # numéro de téléphone/compte
-        
+        method = data.get('method', 'usdt_ton')  # usdt_ton, stars
+        account_info = data.get('account_info', '')  # adresse TON / vide pour Stars
+
+        ALLOWED_METHODS = {'usdt_ton', 'stars'}
+        if method not in ALLOWED_METHODS:
+            return web.json_response({
+                'success': False,
+                'error': 'Méthode de retrait invalide (USDT TON ou Telegram Stars uniquement)'
+            }, status=400)
+
         if not id_code or amount <= 0:
             return web.json_response({
                 'success': False,
@@ -564,13 +571,12 @@ async def api_master_withdraw(request):
             # Envoyer notification à l'OWNER (manuel)
             try:
                 from bot import Bot
+                from pyrogram.enums import ParseMode
                 bot = Bot()
                 
                 method_names = {
-                    'crypto': 'Crypto (BTC/USDT)',
-                    'moov': 'Moov Money',
-                    'orange': 'Orange Money',
-                    'ecobank': 'Ecobank Xpress'
+                    'usdt_ton': 'USDT (TON)',
+                    'stars': 'Telegram Stars'
                 }
                 
                 await bot.send_message(
@@ -580,10 +586,10 @@ async def api_master_withdraw(request):
                     f"👤 Maître ID: <code>{id_data['master_id']}</code>\n"
                     f"💵 Montant: ${amount:.2f}\n"
                     f"💳 Méthode: {method_names.get(method, method)}\n"
-                    f"📱 Compte: <code>{account_info}</code>\n\n"
+                    f"📱 Compte: <code>{account_info or '—'}</code>\n\n"
                     f"🆔 ID_PUBS: <code>{id_data['id_pubs']}</code>\n\n"
                     f"Utilisez /withdrawals pour voir toutes les demandes.",
-                    parse_mode='HTML'
+                    parse_mode=ParseMode.HTML
                 )
             except Exception as notify_error:
                 logger.error(f"Erreur notification owner: {notify_error}")

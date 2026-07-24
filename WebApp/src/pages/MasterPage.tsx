@@ -176,7 +176,7 @@ function MasterInner() {
 function MasterDashboard({ code, onLogout }: { code: string; onLogout: () => void }) {
   const [stats,       setStats]       = useState<any>(null);
   const [amount,      setAmount]      = useState("");
-  const [method,      setMethod]      = useState<"usdt" | "paypal">("usdt");
+  const [method,      setMethod]      = useState<"usdt_ton" | "stars">("usdt_ton");
   const [account,     setAccount]     = useState("");
   const [broadcast,   setBroadcast]   = useState("");
   const [adsEnabled,  setAdsEnabled]  = useState(true);
@@ -245,12 +245,12 @@ function MasterDashboard({ code, onLogout }: { code: string; onLogout: () => voi
       toast("Montant supérieur à votre solde.", "error");
       return;
     }
-    if (!account.trim()) {
-      toast("Renseignez votre adresse de réception.", "error");
+    if (method === "usdt_ton" && !account.trim()) {
+      toast("Renseignez votre adresse TON.", "error");
       return;
     }
     setLoading("withdraw");
-    const res = await requestWithdrawal(code, amt, method, account.trim());
+    const res = await requestWithdrawal(code, amt, method, method === "usdt_ton" ? account.trim() : "");
     setLoading(null);
     if (res?.success) {
       toast("Demande de retrait envoyée. Traitement sous 24-48h.", "success");
@@ -558,7 +558,7 @@ function MasterDashboard({ code, onLogout }: { code: string; onLogout: () => voi
             Méthode
           </label>
           <div className="flex gap-2">
-            {(["usdt", "paypal"] as const).map((m) => (
+            {(["usdt_ton", "stars"] as const).map((m) => (
               <button key={m} onClick={() => setMethod(m)}
                 className="flex-1 h-11 rounded-xl text-sm font-bold uppercase tracking-wider transition-all active:scale-95"
                 style={{
@@ -566,7 +566,7 @@ function MasterDashboard({ code, onLogout }: { code: string; onLogout: () => voi
                   color:      method === m ? "#fff"    : "rgba(255,255,240,0.55)",
                   border:     method === m ? "none"    : "1px solid rgba(255,255,255,0.10)",
                 }}>
-                {m === "usdt" ? "USDT TRC-20" : "PayPal"}
+                {m === "usdt_ton" ? "USDT (TON)" : "Telegram Stars"}
               </button>
             ))}
           </div>
@@ -589,19 +589,26 @@ function MasterDashboard({ code, onLogout }: { code: string; onLogout: () => voi
           />
         </div>
 
-        <div className="mb-4">
-          <label className="block text-xs text-[#FFFFF0]/45 uppercase tracking-wider mb-2 font-semibold">
-            {method === "paypal" ? "Adresse e-mail PayPal" : "Adresse USDT TRC-20"}
-          </label>
-          <input
-            type="text"
-            placeholder={method === "paypal" ? "exemple@email.com" : "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
-            value={account}
-            onChange={(e) => setAccount(e.target.value)}
-            className="w-full h-12 px-3 rounded-xl text-[#FFFFF0] text-sm font-mono outline-none"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-          />
-        </div>
+        {method === "usdt_ton" && (
+          <div className="mb-4">
+            <label className="block text-xs text-[#FFFFF0]/45 uppercase tracking-wider mb-2 font-semibold">
+              Adresse TON
+            </label>
+            <input
+              type="text"
+              placeholder="UQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
+              className="w-full h-12 px-3 rounded-xl text-[#FFFFF0] text-sm font-mono outline-none"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
+            />
+          </div>
+        )}
+        {method === "stars" && (
+          <p className="text-xs text-[#FFFFF0]/45 mb-4 leading-relaxed">
+            Vos Telegram Stars seront envoyées directement à votre compte Telegram (aucune adresse requise).
+          </p>
+        )}
 
         <Button fullWidth loading={loading === "withdraw"} onClick={submitWithdraw} variant="gold">
           Confirmer la demande
