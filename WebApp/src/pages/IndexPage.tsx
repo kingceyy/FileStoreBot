@@ -13,7 +13,7 @@ import { expandWebApp, getQueryParams, getTelegramUser, getAdwCloneId, openTeleg
 
 type StepState = "idle" | "running" | "done" | "error";
 
-// --- Types AdsGram ---
+// --- Types AdsGram / Tads ---
 declare global {
   interface Window {
     Adsgram?: {
@@ -23,6 +23,16 @@ declare global {
       };
     };
     show_11019878?: () => Promise<void>;
+    tads?: {
+      init(params: {
+        widgetId: number;
+        type: "static" | "fullscreen";
+        debug?: boolean;
+        onShowRewardCallback?: (adId?: string) => void;
+        onClickRewardCallback?: (adId?: string) => void;
+        onAdsNotFound?: () => void;
+      }): { destroy?: () => void };
+    };
   }
 }
 
@@ -101,10 +111,53 @@ async function showAdsgramRewardedVideo(): Promise<void> {
   });
 }
 
+// --- Tads (widget TGB statique) — secours quand AdsGram n'a pas de pub ---
+// Recompense choisie : des que le bloc pub s'affiche (pas besoin de clic).
+const TADS_WIDGET_ID = 9725;
+
+async function showTadsFallback(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      if (!window.tads) {
+        reject(new Error("Tads SDK non disponible"));
+        return;
+      }
+      try {
+        window.tads.init({
+          widgetId: TADS_WIDGET_ID,
+          type: "static",
+          debug: false,
+          onShowRewardCallback: () => resolve(),
+          onAdsNotFound: () => reject(new Error("Aucune publicite Tads disponible")),
+        });
+      } catch (e) {
+        reject(e as Error);
+      }
+    };
+
+    if (window.tads) {
+      attempt();
+    } else {
+      const deadline = Date.now() + 3000;
+      const poll = () => {
+        if (window.tads) {
+          attempt();
+        } else if (Date.now() < deadline) {
+          setTimeout(poll, 200);
+        } else {
+          reject(new Error("Tads SDK non disponible"));
+        }
+      };
+      poll();
+    }
+  });
+}
+
 export function IndexPage() {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<{ expiresAt: number; type: "free" | "premium" } | null>(null);
   const [step1, setStep1] = useState<StepState>("idle");
+  const [step2, setStep2] = useState<StepState>("idle"); // secours Tads
   const [success, setSuccess] = useState(false);
   const [running, setRunning] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -150,10 +203,20 @@ export function IndexPage() {
     } catch (err) {
       console.error("[AdsGram]", err);
       setStep1("error");
-      hapticError();
-      setErrorMsg("La publicite est indisponible. Reessayez dans quelques secondes.");
-      setRunning(false);
-      return;
+
+      // Secours : AdsGram n'a pas de pub disponible, on tente Tads
+      setStep2("running");
+      try {
+        await showTadsFallback();
+        setStep2("done");
+      } catch (err2) {
+        console.error("[Tads]", err2);
+        setStep2("error");
+        hapticError();
+        setErrorMsg("Aucune publicite disponible pour le moment. Reessayez dans quelques secondes.");
+        setRunning(false);
+        return;
+      }
     }
 
     const res = await watchAd(userId, cloneId, idPubs);
@@ -273,7 +336,12 @@ export function IndexPage() {
           <Card>
             {/* 1 seule étape visible : AdsGram */}
             <StepRow index={1} label="Publicite AdsGram" sublabel="Video recompensee" state={step1} />
+            {step2 !== "idle" && (
+              <StepRow index={2} label="Publicite alternative" sublabel="Secours (Tads)" state={step2} />
+            )}
           </Card>
+          {/* Conteneur requis par le SDK Tads — reste vide et invisible tant qu'aucune pub n'y est chargee */}
+          <div id={`tads-container-${TADS_WIDGET_ID}`} className="mt-3 empty:hidden" />
         </motion.div>
 
         {errorMsg && (
