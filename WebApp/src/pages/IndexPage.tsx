@@ -13,7 +13,7 @@ import { expandWebApp, getQueryParams, getTelegramUser, getAdwCloneId, openTeleg
 
 type StepState = "idle" | "running" | "done" | "error";
 
-// --- Types AdsGram / Tads ---
+// --- Types AdsGram / Adexium ---
 declare global {
   interface Window {
     Adsgram?: {
@@ -23,15 +23,19 @@ declare global {
       };
     };
     show_11019878?: () => Promise<void>;
-    tads?: {
-      init(params: {
-        widgetId: number;
-        type: "static" | "fullscreen";
-        debug?: boolean;
-        onShowRewardCallback?: (adId?: string) => void;
-        onClickRewardCallback?: (adId?: string) => void;
-        onAdsNotFound?: () => void;
-      }): { destroy?: () => void };
+    AdexiumWidget?: new (opt: {
+      wid: string;
+      adFormat: "interstitial" | "push-like" | "video";
+      debug?: boolean;
+      firstAdImpressionIntervalInSeconds?: number;
+      adImpressionIntervalInSeconds?: number;
+      isFullScreen?: boolean;
+    }) => {
+      autoMode(): void;
+      requestAd(format: string): void;
+      displayAd(ad: unknown): void;
+      on(event: string, callback: (data?: unknown) => void): void;
+      off(event: string, callback: (data?: unknown) => void): void;
     };
   }
 }
@@ -111,41 +115,60 @@ async function showAdsgramRewardedVideo(): Promise<void> {
   });
 }
 
-// --- Tads (widget TGB statique) — secours quand AdsGram n'a pas de pub ---
-// Recompense choisie : des que le bloc pub s'affiche (pas besoin de clic).
-const TADS_WIDGET_ID = 9725;
+// --- Adexium EN SECOURS — prend le relais quand AdsGram n'a pas de pub ---
+// Recompense sur adPlaybackCompleted (pub vue jusqu'au bout) ou adClosed
+// (pub fermee par l'utilisateur apres affichage), avec filet de securite
+// en cas d'absence totale de reponse du SDK.
+const ADEXIUM_WIDGET_ID = "604df8df-6a64-407a-b754-2c20d1f15f9f";
 
-async function showTadsFallback(): Promise<void> {
+async function showAdexiumFallback(): Promise<void> {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(hardTimeout);
+      fn();
+    };
+
+    const hardTimeout = setTimeout(() => {
+      finish(() => reject(new Error("Adexium timeout — aucune reponse")));
+    }, 8000);
+
     const attempt = () => {
-      if (!window.tads) {
-        reject(new Error("Tads SDK non disponible"));
+      if (!window.AdexiumWidget) {
+        finish(() => reject(new Error("Adexium SDK non disponible")));
         return;
       }
       try {
-        window.tads.init({
-          widgetId: TADS_WIDGET_ID,
-          type: "static",
+        const ads = new window.AdexiumWidget({
+          wid: ADEXIUM_WIDGET_ID,
+          adFormat: "interstitial",
           debug: false,
-          onShowRewardCallback: () => resolve(),
-          onAdsNotFound: () => reject(new Error("Aucune publicite Tads disponible")),
         });
+
+        ads.on("adReceived", (ad) => ads.displayAd(ad));
+        ads.on("noAdFound", () => finish(() => reject(new Error("Aucune publicite Adexium disponible"))));
+        ads.on("adPlaybackCompleted", () => finish(resolve));
+        ads.on("adClosed", () => finish(resolve));
+
+        ads.requestAd("interstitial");
       } catch (e) {
-        reject(e as Error);
+        finish(() => reject(e as Error));
       }
     };
 
-    if (window.tads) {
+    if (window.AdexiumWidget) {
       attempt();
     } else {
       const deadline = Date.now() + 3000;
       const poll = () => {
-        if (window.tads) {
+        if (window.AdexiumWidget) {
           attempt();
         } else if (Date.now() < deadline) {
           setTimeout(poll, 200);
         } else {
-          reject(new Error("Tads SDK non disponible"));
+          finish(() => reject(new Error("Adexium SDK non disponible")));
         }
       };
       poll();
@@ -157,7 +180,7 @@ export function IndexPage() {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<{ expiresAt: number; type: "free" | "premium" } | null>(null);
   const [step1, setStep1] = useState<StepState>("idle");
-  const [step2, setStep2] = useState<StepState>("idle"); // secours Tads
+  const [step2, setStep2] = useState<StepState>("idle"); // secours Adexium
   const [success, setSuccess] = useState(false);
   const [running, setRunning] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -191,6 +214,8 @@ export function IndexPage() {
 
     setRunning(true);
     setErrorMsg(null);
+    setStep1("idle");
+    setStep2("idle");
 
     // Étape cachée : Monetag en arrière-plan (silencieux)
     await showMonetagAdSilent();
@@ -204,13 +229,13 @@ export function IndexPage() {
       console.error("[AdsGram]", err);
       setStep1("error");
 
-      // Secours : AdsGram n'a pas de pub disponible, on tente Tads
+      // Secours : Adexium prend le relais quand AdsGram n'a pas de pub
       setStep2("running");
       try {
-        await showTadsFallback();
+        await showAdexiumFallback();
         setStep2("done");
       } catch (err2) {
-        console.error("[Tads]", err2);
+        console.error("[Adexium fallback]", err2);
         setStep2("error");
         hapticError();
         setErrorMsg("Aucune publicite disponible pour le moment. Reessayez dans quelques secondes.");
@@ -337,11 +362,9 @@ export function IndexPage() {
             {/* 1 seule étape visible : AdsGram */}
             <StepRow index={1} label="Publicite AdsGram" sublabel="Video recompensee" state={step1} />
             {step2 !== "idle" && (
-              <StepRow index={2} label="Publicite alternative" sublabel="Secours (Tads)" state={step2} />
+              <StepRow index={2} label="Publicite alternative" sublabel="Secours (Adexium)" state={step2} />
             )}
           </Card>
-          {/* Conteneur requis par le SDK Tads — reste vide et invisible tant qu'aucune pub n'y est chargee */}
-          <div id={`tads-container-${TADS_WIDGET_ID}`} className="mt-3 empty:hidden" />
         </motion.div>
 
         {errorMsg && (
