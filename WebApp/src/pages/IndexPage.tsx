@@ -13,7 +13,7 @@ import { expandWebApp, getQueryParams, getTelegramUser, getAdwCloneId, openTeleg
 
 type StepState = "idle" | "running" | "done" | "error";
 
-// --- Types AdsGram / Adexium ---
+// --- Types AdsGram / GigaPub ---
 declare global {
   interface Window {
     Adsgram?: {
@@ -23,20 +23,7 @@ declare global {
       };
     };
     show_11019878?: () => Promise<void>;
-    AdexiumWidget?: new (opt: {
-      wid: string;
-      adFormat: "interstitial" | "push-like" | "video";
-      debug?: boolean;
-      firstAdImpressionIntervalInSeconds?: number;
-      adImpressionIntervalInSeconds?: number;
-      isFullScreen?: boolean;
-    }) => {
-      autoMode(): void;
-      requestAd(format: string): void;
-      displayAd(ad: unknown): void;
-      on(event: string, callback: (data?: unknown) => void): void;
-      off(event: string, callback: (data?: unknown) => void): void;
-    };
+    showGiga?: () => Promise<void>;
   }
 }
 
@@ -115,13 +102,10 @@ async function showAdsgramRewardedVideo(): Promise<void> {
   });
 }
 
-// --- Adexium EN SECOURS — prend le relais quand AdsGram n'a pas de pub ---
-// Recompense sur adPlaybackCompleted (pub vue jusqu'au bout) ou adClosed
-// (pub fermee par l'utilisateur apres affichage), avec filet de securite
-// en cas d'absence totale de reponse du SDK.
-const ADEXIUM_WIDGET_ID = "604df8df-6a64-407a-b754-2c20d1f15f9f";
-
-async function showAdexiumFallback(): Promise<void> {
+// --- GigaPub EN SECOURS — prend le relais quand AdsGram n'a pas de pub ---
+// API la plus simple des trois testees : une seule promesse, avec filet
+// de securite si elle ne se resout/rejette jamais.
+async function showGigaPubFallback(): Promise<void> {
   return new Promise((resolve, reject) => {
     let settled = false;
     const finish = (fn: () => void) => {
@@ -132,43 +116,30 @@ async function showAdexiumFallback(): Promise<void> {
     };
 
     const hardTimeout = setTimeout(() => {
-      finish(() => reject(new Error("Adexium timeout — aucune reponse")));
+      finish(() => reject(new Error("GigaPub timeout — aucune reponse")));
     }, 8000);
 
     const attempt = () => {
-      if (!window.AdexiumWidget) {
-        finish(() => reject(new Error("Adexium SDK non disponible")));
+      if (typeof window.showGiga !== "function") {
+        finish(() => reject(new Error("GigaPub SDK non disponible")));
         return;
       }
-      try {
-        const ads = new window.AdexiumWidget({
-          wid: ADEXIUM_WIDGET_ID,
-          adFormat: "interstitial",
-          debug: false,
-        });
-
-        ads.on("adReceived", (ad) => ads.displayAd(ad));
-        ads.on("noAdFound", () => finish(() => reject(new Error("Aucune publicite Adexium disponible"))));
-        ads.on("adPlaybackCompleted", () => finish(resolve));
-        ads.on("adClosed", () => finish(resolve));
-
-        ads.requestAd("interstitial");
-      } catch (e) {
-        finish(() => reject(e as Error));
-      }
+      window.showGiga()
+        .then(() => finish(resolve))
+        .catch((e) => finish(() => reject(e instanceof Error ? e : new Error("GigaPub erreur"))));
     };
 
-    if (window.AdexiumWidget) {
+    if (typeof window.showGiga === "function") {
       attempt();
     } else {
       const deadline = Date.now() + 3000;
       const poll = () => {
-        if (window.AdexiumWidget) {
+        if (typeof window.showGiga === "function") {
           attempt();
         } else if (Date.now() < deadline) {
           setTimeout(poll, 200);
         } else {
-          finish(() => reject(new Error("Adexium SDK non disponible")));
+          finish(() => reject(new Error("GigaPub SDK non disponible")));
         }
       };
       poll();
@@ -180,7 +151,7 @@ export function IndexPage() {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<{ expiresAt: number; type: "free" | "premium" } | null>(null);
   const [step1, setStep1] = useState<StepState>("idle");
-  const [step2, setStep2] = useState<StepState>("idle"); // secours Adexium
+  const [step2, setStep2] = useState<StepState>("idle"); // secours GigaPub
   const [success, setSuccess] = useState(false);
   const [running, setRunning] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -229,13 +200,13 @@ export function IndexPage() {
       console.error("[AdsGram]", err);
       setStep1("error");
 
-      // Secours : Adexium prend le relais quand AdsGram n'a pas de pub
+      // Secours : GigaPub prend le relais quand AdsGram n'a pas de pub
       setStep2("running");
       try {
-        await showAdexiumFallback();
+        await showGigaPubFallback();
         setStep2("done");
       } catch (err2) {
-        console.error("[Adexium fallback]", err2);
+        console.error("[GigaPub fallback]", err2);
         setStep2("error");
         hapticError();
         setErrorMsg("Aucune publicite disponible pour le moment. Reessayez dans quelques secondes.");
@@ -362,7 +333,7 @@ export function IndexPage() {
             {/* 1 seule étape visible : AdsGram */}
             <StepRow index={1} label="Publicite AdsGram" sublabel="Video recompensee" state={step1} />
             {step2 !== "idle" && (
-              <StepRow index={2} label="Publicite alternative" sublabel="Secours (Adexium)" state={step2} />
+              <StepRow index={2} label="Publicite alternative" sublabel="Secours (GigaPub)" state={step2} />
             )}
           </Card>
         </motion.div>
